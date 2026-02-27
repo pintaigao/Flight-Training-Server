@@ -1,9 +1,27 @@
-import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { FlightModule } from './flight/flight.module';
+import { UserModule } from './user/user.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
-  imports: [],
+  imports: [
+    TypeOrmModule.forRoot({
+      type: 'mysql',
+      host: 'localhost',
+      port: 3306,
+      username: 'hptg',
+      password: 'Hptg19940215',
+      database: 'flightdb',
+      entities: [__dirname + '/**/*.schema{.ts,.js}'],
+      synchronize: true, // 开发环境可用，生产建议迁移
+    }),
+    AuthModule,
+    FlightModule,
+    UserModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
