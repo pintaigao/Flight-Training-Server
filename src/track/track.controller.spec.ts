@@ -1,9 +1,44 @@
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { TrackController } from './track.controller';
 import { TrackService } from './track.service';
 
 describe('TrackController', () => {
-  it('exposes recent-by-tail endpoint', async () => {
+  it('returns 400 when tail missing', async () => {
+    const moduleRef = await Test.createTestingModule({
+      controllers: [TrackController],
+      providers: [
+        {
+          provide: TrackService,
+          useValue: {
+            getRecentByTail: jest.fn(),
+          },
+        },
+      ],
+    }).compile();
+
+    const controller = moduleRef.get(TrackController);
+    await expect(controller.getRecentByTail('')).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('returns 404 when no match', async () => {
+    const moduleRef = await Test.createTestingModule({
+      controllers: [TrackController],
+      providers: [
+        {
+          provide: TrackService,
+          useValue: {
+            getRecentByTail: jest.fn(async () => null),
+          },
+        },
+      ],
+    }).compile();
+
+    const controller = moduleRef.get(TrackController);
+    await expect(controller.getRecentByTail('N77GX')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('returns payload when found', async () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [TrackController],
       providers: [
@@ -28,6 +63,6 @@ describe('TrackController', () => {
     const controller = moduleRef.get(TrackController);
     const res = await controller.getRecentByTail('N77GX');
     expect(res.tail).toBe('N77GX');
-    expect(res.track.type).toBe('Feature');
+    expect(res.faFlightId).toBe('demo');
   });
 });

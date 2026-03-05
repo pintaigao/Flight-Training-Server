@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, NotFoundException, Query } from '@nestjs/common';
 import { TrackService } from './track.service';
 
 @Controller('track')
@@ -6,8 +6,12 @@ export class TrackController {
   constructor(private readonly trackService: TrackService) {}
 
   @Get('recent-by-tail')
-  getRecentByTail(@Query('tail') tail: string) {
-    return this.trackService.getRecentByTail(tail);
+  async getRecentByTail(@Query('tail') tail: string) {
+    const normalized = String(tail ?? '').trim().toUpperCase();
+    if (!normalized) throw new BadRequestException('tail is required');
+
+    const res = await this.trackService.getRecentByTail(normalized);
+    if (!res) throw new NotFoundException('No matching flight found');
+    return res;
   }
 }
-
