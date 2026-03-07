@@ -1,4 +1,17 @@
-import { BadRequestException, Body, Controller, Delete, Get, NotFoundException, Param, Post, Put, Query, UploadedFile, UseInterceptors } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  NotFoundException,
+  Param,
+  Post,
+  Put,
+  Query,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FlightService } from './flight.service';
 import { UpsertFlightDto } from './dto/flight.dto';
@@ -29,7 +42,10 @@ export class FlightController {
   }
 
   @Put(':id/track')
-  async upsertTrack(@Param('id') id: string, @Body() dto: UpsertFlightTrackDto) {
+  async upsertTrack(
+    @Param('id') id: string,
+    @Body() dto: UpsertFlightTrackDto,
+  ) {
     const flightId = String(id ?? '').trim();
     if (!flightId) throw new BadRequestException('id is required');
     if (!dto?.source) throw new BadRequestException('source is required');
@@ -41,7 +57,8 @@ export class FlightController {
   async getTrack(@Param('id') id: string, @Query('prefer') prefer?: string) {
     const flightId = String(id ?? '').trim();
     if (!flightId) throw new BadRequestException('id is required');
-    const preferred: TrackSource = prefer === 'FLIGHTAWARE' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
+    const preferred: TrackSource =
+      prefer === 'FLIGHTAWARE' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
     const res = await this.flightService.getTrack(flightId, preferred);
     if (!res) throw new NotFoundException('No track found');
     return sanitizeTrack(res);
@@ -74,14 +91,18 @@ export class FlightController {
     if (!flightId) throw new BadRequestException('id is required');
     if (!file) throw new BadRequestException('file is required');
 
-    const src: TrackSource = source === 'FLIGHTAWARE' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
+    const src: TrackSource =
+      source === 'FLIGHTAWARE' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
     const filename = file.originalname ?? null;
     const mime = file.mimetype ?? null;
 
     const text = file.buffer.toString('utf8');
     // For now, support ForeFlight KML gx:Track uploads. (GPX upload can be added later.)
     const parsed = parseForeFlightKml(text);
-    parsed.feature.properties = { ...(parsed.feature.properties ?? {}), id: flightId };
+    parsed.feature.properties = {
+      ...(parsed.feature.properties ?? {}),
+      id: flightId,
+    };
 
     const saved = await this.flightService.upsertTrackWithRaw(flightId, src, {
       feature: parsed.feature,
@@ -99,7 +120,8 @@ export class FlightController {
   async getSamples(@Param('id') id: string, @Query('source') source?: string) {
     const flightId = String(id ?? '').trim();
     if (!flightId) throw new BadRequestException('id is required');
-    const src: TrackSource = source === 'FLIGHTAWARE' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
+    const src: TrackSource =
+      source === 'FLIGHTAWARE' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
     const row = await this.flightService.getSamplesText(flightId, src);
     if (!row?.samplesText) throw new NotFoundException('No samples found');
     let samples: any;

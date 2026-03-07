@@ -21,10 +21,16 @@ export class FlightService {
 
     const ids = flights.map((f) => f.id);
     const tracks = await this.flightTrackRepo.find({
-      where: { flightId: In(ids), source: In(['FORE_FLIGHT', 'FLIGHTAWARE'] as TrackSource[]) },
+      where: {
+        flightId: In(ids),
+        source: In(['FORE_FLIGHT', 'FLIGHTAWARE'] as TrackSource[]),
+      },
     });
 
-    const byFlight = new Map<string, { fore?: FlightTrack; fa?: FlightTrack }>();
+    const byFlight = new Map<
+      string,
+      { fore?: FlightTrack; fa?: FlightTrack }
+    >();
     for (const t of tracks) {
       const cur = byFlight.get(t.flightId) ?? {};
       if (t.source === 'FORE_FLIGHT') cur.fore = t;
@@ -54,7 +60,9 @@ export class FlightService {
   }
 
   async upsertTrack(flightId: string, dto: UpsertFlightTrackDto) {
-    const existing = await this.flightTrackRepo.findOne({ where: { flightId, source: dto.source } });
+    const existing = await this.flightTrackRepo.findOne({
+      where: { flightId, source: dto.source },
+    });
     const entity = this.flightTrackRepo.create({
       ...(existing ?? { flightId, source: dto.source }),
       feature: dto.feature,
@@ -81,7 +89,9 @@ export class FlightService {
       samplesText: string | null;
     },
   ) {
-    const existing = await this.flightTrackRepo.findOne({ where: { flightId, source } });
+    const existing = await this.flightTrackRepo.findOne({
+      where: { flightId, source },
+    });
     const entity = this.flightTrackRepo.create({
       ...(existing ?? { flightId, source }),
       feature: payload.feature,
@@ -103,10 +113,15 @@ export class FlightService {
   }
 
   async getTrack(flightId: string, prefer: TrackSource = 'FORE_FLIGHT') {
-    const first = await this.flightTrackRepo.findOne({ where: { flightId, source: prefer } });
+    const first = await this.flightTrackRepo.findOne({
+      where: { flightId, source: prefer },
+    });
     if (first) return first;
-    const fallback: TrackSource = prefer === 'FORE_FLIGHT' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
-    return this.flightTrackRepo.findOne({ where: { flightId, source: fallback } });
+    const fallback: TrackSource =
+      prefer === 'FORE_FLIGHT' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
+    return this.flightTrackRepo.findOne({
+      where: { flightId, source: fallback },
+    });
   }
 
   async deleteFlight(id: string) {

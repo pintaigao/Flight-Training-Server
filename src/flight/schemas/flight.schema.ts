@@ -1,11 +1,5 @@
 import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
 
-export type FlightComments = {
-  well: string;
-  improve: string;
-  notes: string;
-};
-
 @Entity({ name: 'flights' })
 export class Flight {
   @PrimaryColumn({ type: 'varchar', length: 128 })
@@ -42,6 +36,6 @@ export class Flight {
   @Column({ type: 'json' })
   tags: string[];
 
-  @Column({ type: 'json' })
-  comments: FlightComments;
+  @Column({ type: 'longtext' })
+  comments: string;
 }

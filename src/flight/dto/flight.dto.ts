@@ -1,5 +1,3 @@
-import type { FlightComments } from '../schemas/flight.schema';
-
 export class UpsertFlightDto {
   dateISO: string;
   startTimeISO?: string | null;
@@ -10,5 +8,5 @@ export class UpsertFlightDto {
   durationMin: number;
   description?: string | null;
   tags: string[];
-  comments: FlightComments;
+  comments: string;
 }

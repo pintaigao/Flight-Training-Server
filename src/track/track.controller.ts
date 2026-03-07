@@ -1,4 +1,10 @@
-import { BadRequestException, Controller, Get, NotFoundException, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  NotFoundException,
+  Query,
+} from '@nestjs/common';
 import { TrackService } from './track.service';
 
 @Controller('track')
@@ -7,7 +13,9 @@ export class TrackController {
 
   @Get('recent-by-tail')
   async getRecentByTail(@Query('tail') tail: string) {
-    const normalized = String(tail ?? '').trim().toUpperCase();
+    const normalized = String(tail ?? '')
+      .trim()
+      .toUpperCase();
     if (!normalized) throw new BadRequestException('tail is required');
 
     const res = await this.trackService.getRecentByTail(normalized);

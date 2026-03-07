@@ -18,7 +18,9 @@ describe('TrackController', () => {
     }).compile();
 
     const controller = moduleRef.get(TrackController);
-    await expect(controller.getRecentByTail('')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(controller.getRecentByTail('')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 
   it('returns 404 when no match', async () => {
@@ -35,7 +37,9 @@ describe('TrackController', () => {
     }).compile();
 
     const controller = moduleRef.get(TrackController);
-    await expect(controller.getRecentByTail('N77GX')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(controller.getRecentByTail('N77GX')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 
   it('returns payload when found', async () => {

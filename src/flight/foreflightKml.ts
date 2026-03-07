@@ -2,7 +2,10 @@ const GX_TRACK_RE = /<gx:Track\b[\s\S]*?<\/gx:Track>/i;
 const WHEN_RE = /<when>([^<]+)<\/when>/gi;
 const COORD_RE = /<gx:coord>([^<]+)<\/gx:coord>/gi;
 
-function haversineMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+function haversineMeters(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+) {
   const R = 6371000;
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
@@ -11,7 +14,8 @@ function haversineMeters(a: { lat: number; lng: number }, b: { lat: number; lng:
   const lat2 = toRad(b.lat);
   const sinDLat = Math.sin(dLat / 2);
   const sinDLng = Math.sin(dLng / 2);
-  const h = sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
+  const h =
+    sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
   const c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
   return R * c;
 }
@@ -40,7 +44,13 @@ export type ParsedForeFlightKml = {
     geometry: { type: 'LineString'; coordinates: [number, number][] };
   };
   meta: any;
-  samples: { t: string; lng: number; lat: number; altAglFt: number | null; gsKt: number | null }[];
+  samples: {
+    t: string;
+    lng: number;
+    lat: number;
+    altAglFt: number | null;
+    gsKt: number | null;
+  }[];
 };
 
 /**
@@ -91,12 +101,24 @@ export function parseForeFlightKml(text: string): ParsedForeFlightKml {
   let gsSumKt = 0;
   let gsCount = 0;
 
-  const samples: { t: string; lng: number; lat: number; altAglFt: number | null; gsKt: number | null }[] = [];
+  const samples: {
+    t: string;
+    lng: number;
+    lat: number;
+    altAglFt: number | null;
+    gsKt: number | null;
+  }[] = [];
   for (let i = 0; i < count; i++) {
     const c = coords[i];
     const t = whens[i];
     if (!t) continue;
-    const s = { t, lng: c.lng, lat: c.lat, altAglFt: c.altAglFt, gsKt: null as number | null };
+    const s = {
+      t,
+      lng: c.lng,
+      lat: c.lat,
+      altAglFt: c.altAglFt,
+      gsKt: null as number | null,
+    };
     if (typeof c.altAglFt === 'number') {
       altMinFt = altMinFt == null ? c.altAglFt : Math.min(altMinFt, c.altAglFt);
       altMaxFt = altMaxFt == null ? c.altAglFt : Math.max(altMaxFt, c.altAglFt);
@@ -123,7 +145,10 @@ export function parseForeFlightKml(text: string): ParsedForeFlightKml {
 
   // For map rendering, bound geometry size (no UI limit; this is internal rendering optimization)
   const MAX_COORDS = 20000;
-  const line = downsampleKeepEnds(coords.slice(0, count).map((p) => [p.lng, p.lat] as [number, number]), MAX_COORDS);
+  const line = downsampleKeepEnds(
+    coords.slice(0, count).map((p) => [p.lng, p.lat] as [number, number]),
+    MAX_COORDS,
+  );
 
   return {
     startTimeISO,

@@ -6,12 +6,15 @@ import { isChicagoMorning } from './timeWindow';
 export class TrackService {
   async getRecentByTail(tail: string, now = new Date()) {
     const list = await listFlightsByTail(tail);
-    const flights: any[] = (list?.flights ?? list?.data?.flights ?? []) as any[];
+    const flights: any[] = (list?.flights ??
+      list?.data?.flights ??
+      []) as any[];
 
     const nowMs = now.getTime();
     const windowStartMs = nowMs - 48 * 60 * 60 * 1000;
 
-    let best: { faFlightId: string; depMs: number; depISO: string } | null = null;
+    let best: { faFlightId: string; depMs: number; depISO: string } | null =
+      null;
     for (const f of flights) {
       const faFlightId = String(f?.fa_flight_id ?? f?.faFlightId ?? '');
       if (!faFlightId) continue;

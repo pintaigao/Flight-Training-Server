@@ -5,4 +5,3 @@ export class UpsertFlightTrackDto {
   feature: any;
   meta?: any;
 }
-

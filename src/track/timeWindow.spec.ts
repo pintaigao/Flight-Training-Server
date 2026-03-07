@@ -8,4 +8,3 @@ describe('isChicagoMorning', () => {
     expect(isChicagoMorning('2026-01-15T11:59:00Z')).toBe(false); // 05:59 CST
   });
 });
-
