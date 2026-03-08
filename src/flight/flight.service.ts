@@ -105,6 +105,14 @@ export class FlightService {
     return { id: saved.id, description: saved.description };
   }
 
+  async patchComment(id: string, comment: string) {
+    const flight = await this.flightRepo.findOne({ where: { id } });
+    if (!flight) return null;
+    flight.comments = comment;
+    const saved = await this.flightRepo.save(flight);
+    return { id: saved.id, comments: saved.comments };
+  }
+
   async upsertTrack(flightId: string, dto: UpsertFlightTrackDto) {
     const existing = await this.flightTrackRepo.findOne({
       where: { flightId, source: dto.source },

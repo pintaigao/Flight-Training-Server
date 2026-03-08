@@ -14,3 +14,7 @@ export class UpsertFlightDto {
 export class PatchFlightDescriptionDto {
   description: string;
 }
+
+export class PatchFlightCommentDto {
+  comment: string;
+}

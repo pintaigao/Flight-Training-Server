@@ -15,7 +15,11 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FlightService } from './flight.service';
-import { PatchFlightDescriptionDto, UpsertFlightDto } from './dto/flight.dto';
+import {
+  PatchFlightCommentDto,
+  PatchFlightDescriptionDto,
+  UpsertFlightDto,
+} from './dto/flight.dto';
 import { UpsertFlightTrackDto } from './dto/track.dto';
 import type { TrackSource } from './schemas/flightTrack.schema';
 import { parseForeFlightKml } from './foreflightKml';
@@ -66,6 +70,17 @@ export class FlightController {
     if (dto.description.length > 280)
       throw new BadRequestException('description is too long (max 280)');
     const res = await this.flightService.patchDescription(flightId, dto.description);
+    if (!res) throw new NotFoundException('Flight not found');
+    return res;
+  }
+
+  @Patch(':id/comment')
+  async patchComment(@Param('id') id: string, @Body() dto: PatchFlightCommentDto) {
+    const flightId = String(id ?? '').trim();
+    if (!flightId) throw new BadRequestException('id is required');
+    if (!dto || typeof dto.comment !== 'string')
+      throw new BadRequestException('comment is required');
+    const res = await this.flightService.patchComment(flightId, dto.comment);
     if (!res) throw new NotFoundException('Flight not found');
     return res;
   }
