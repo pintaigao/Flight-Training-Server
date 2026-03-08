@@ -6,6 +6,42 @@ import { FlightTrack, type TrackSource } from './schemas/flightTrack.schema';
 import type { UpsertFlightDto } from './dto/flight.dto';
 import type { UpsertFlightTrackDto } from './dto/track.dto';
 
+const METERS_TO_FEET = 3.280839895013123;
+
+function normalizeKmlMeta(meta: any | null) {
+  if (!meta) return meta;
+  // New shape: altRef=MSL, altSourceUnit=m. Old imports stored meters but labeled as feet.
+  if (meta.altRef === 'MSL' && meta.altSourceUnit === 'm') return meta;
+  if (meta.altRef !== 'AGL') return meta;
+
+  const stats = meta?.stats;
+  if (!stats) {
+    return {
+      ...meta,
+      altRef: 'MSL',
+      altUnit: 'ft',
+      altSourceUnit: 'm',
+      altSourceRef: 'MSL',
+    };
+  }
+
+  const conv = (n: any) =>
+    typeof n === 'number' && Number.isFinite(n) ? n * METERS_TO_FEET : n;
+
+  return {
+    ...meta,
+    altRef: 'MSL',
+    altUnit: 'ft',
+    altSourceUnit: 'm',
+    altSourceRef: 'MSL',
+    stats: {
+      ...stats,
+      altMinFt: conv(stats.altMinFt),
+      altMaxFt: conv(stats.altMaxFt),
+    },
+  };
+}
+
 @Injectable()
 export class FlightService {
   constructor(
@@ -41,11 +77,13 @@ export class FlightService {
     return flights.map((f) => {
       const pair = byFlight.get(f.id);
       const best = pair?.fore ?? pair?.fa ?? null;
+      const meta =
+        best?.rawFormat === 'kml' ? normalizeKmlMeta(best?.meta) : best?.meta;
       return {
         ...f,
         track: best?.feature ?? null,
         trackSource: best?.source ?? null,
-        trackMeta: best?.meta ?? null,
+        trackMeta: meta ?? null,
       };
     });
   }
@@ -57,6 +95,14 @@ export class FlightService {
       ...dto,
     });
     return this.flightRepo.save(entity);
+  }
+
+  async patchDescription(id: string, description: string) {
+    const flight = await this.flightRepo.findOne({ where: { id } });
+    if (!flight) return null;
+    flight.description = description;
+    const saved = await this.flightRepo.save(flight);
+    return { id: saved.id, description: saved.description };
   }
 
   async upsertTrack(flightId: string, dto: UpsertFlightTrackDto) {
@@ -108,7 +154,15 @@ export class FlightService {
   async getSamplesText(flightId: string, source: TrackSource) {
     return this.flightTrackRepo.findOne({
       where: { flightId, source },
-      select: ['id', 'flightId', 'source', 'samplesText', 'createdAt'],
+      select: [
+        'id',
+        'flightId',
+        'source',
+        'rawFormat',
+        'meta',
+        'samplesText',
+        'createdAt',
+      ],
     });
   }
 

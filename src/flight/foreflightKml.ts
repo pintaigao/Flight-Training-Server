@@ -2,6 +2,54 @@ const GX_TRACK_RE = /<gx:Track\b[\s\S]*?<\/gx:Track>/i;
 const WHEN_RE = /<when>([^<]+)<\/when>/gi;
 const COORD_RE = /<gx:coord>([^<]+)<\/gx:coord>/gi;
 
+const METERS_TO_FEET = 3.280839895013123;
+
+function inBox(
+  lat: number,
+  lng: number,
+  box: { latMin: number; latMax: number; lngMin: number; lngMax: number },
+) {
+  return (
+    lat >= box.latMin &&
+    lat <= box.latMax &&
+    lng >= box.lngMin &&
+    lng <= box.lngMax
+  );
+}
+
+// Heuristic mapping for US time zones based on lat/lng.
+// Returns IANA zone name (e.g. America/Chicago) or null if unknown.
+function guessUsTimeZoneFromLatLng(lat: number, lng: number) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+  const US_BOUNDS = { latMin: 18, latMax: 72, lngMin: -171, lngMax: -50 };
+  if (!inBox(lat, lng, US_BOUNDS)) return null;
+
+  // Hawaii
+  if (
+    inBox(lat, lng, { latMin: 18, latMax: 23.5, lngMin: -161, lngMax: -154 })
+  )
+    return 'Pacific/Honolulu';
+
+  // Alaska (rough, excludes Aleutians edge cases)
+  if (
+    inBox(lat, lng, { latMin: 51, latMax: 72, lngMin: -170, lngMax: -129 })
+  )
+    return 'America/Anchorage';
+
+  // Phoenix keeps MST year-round; rough AZ box.
+  if (
+    inBox(lat, lng, { latMin: 31, latMax: 37.5, lngMin: -115, lngMax: -108.8 })
+  )
+    return 'America/Phoenix';
+
+  // Longitude-based fallback across the lower 48.
+  if (lng <= -114) return 'America/Los_Angeles';
+  if (lng <= -101) return 'America/Denver';
+  if (lng <= -87) return 'America/Chicago';
+  return 'America/New_York';
+}
+
 function haversineMeters(
   a: { lat: number; lng: number },
   b: { lat: number; lng: number },
@@ -56,7 +104,7 @@ export type ParsedForeFlightKml = {
 /**
  * Parses ForeFlight KML <gx:Track> into a GeoJSON LineString and meta.
  *
- * Project convention (per user): KML altitude is interpreted as AGL in feet.
+ * ForeFlight KML gx:coord altitude is in meters (MSL). We convert to feet (MSL).
  * Speed is computed as ground speed in knots.
  */
 export function parseForeFlightKml(text: string): ParsedForeFlightKml {
@@ -83,8 +131,10 @@ export function parseForeFlightKml(text: string): ParsedForeFlightKml {
     const lng = Number(parts[0]);
     const lat = Number(parts[1]);
     if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue;
-    const alt = parts.length >= 3 ? Number(parts[2]) : NaN;
-    const altAglFt = Number.isFinite(alt) ? alt : null;
+    const altMeters = parts.length >= 3 ? Number(parts[2]) : NaN;
+    const altAglFt = Number.isFinite(altMeters)
+      ? altMeters * METERS_TO_FEET
+      : null;
     coords.push({ lng, lat, altAglFt });
   }
 
@@ -93,6 +143,7 @@ export function parseForeFlightKml(text: string): ParsedForeFlightKml {
 
   const startTimeISO = whens[0];
   const endTimeISO = whens[count - 1];
+  const departureTimeZone = guessUsTimeZoneFromLatLng(coords[0].lat, coords[0].lng);
 
   // compute per-point samples + stats
   let altMinFt: number | null = null;
@@ -160,9 +211,12 @@ export function parseForeFlightKml(text: string): ParsedForeFlightKml {
       geometry: { type: 'LineString', coordinates: line },
     },
     meta: {
-      altRef: 'AGL',
+      altRef: 'MSL',
       altUnit: 'ft',
+      altSourceUnit: 'm',
+      altSourceRef: 'MSL',
       speedUnit: 'kt',
+      departureTimeZone,
       startTimeISO,
       endTimeISO,
       pointCount: count,

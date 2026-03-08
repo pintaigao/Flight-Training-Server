@@ -10,3 +10,7 @@ export class UpsertFlightDto {
   tags: string[];
   comments: string;
 }
+
+export class PatchFlightDescriptionDto {
+  description: string;
+}
