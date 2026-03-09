@@ -6,8 +6,8 @@ export class Flight {
   id: string;
 
   @Index()
-  @Column({ type: 'int' })
-  userId: number;
+  @Column({ type: 'varchar', length: 36 })
+  userId: string;
 
   @Index()
   @Column({ type: 'varchar', length: 16 })

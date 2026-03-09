@@ -11,8 +11,8 @@ export type TrackSource = 'FORE_FLIGHT' | 'FLIGHTAWARE';
 @Entity({ name: 'flight_tracks' })
 @Index(['flightId', 'source'], { unique: true })
 export class FlightTrack {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Index()
   @Column({ type: 'varchar', length: 128 })

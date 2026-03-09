@@ -11,7 +11,7 @@ export class UserService {
     private userRepo: Repository<User>,
   ) {}
 
-  async findById(id: number) {
+  async findById(id: string) {
     return this.userRepo.findOne({ where: { id } });
   }
 

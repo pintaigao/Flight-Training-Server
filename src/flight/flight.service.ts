@@ -51,13 +51,13 @@ export class FlightService {
     private flightTrackRepo: Repository<FlightTrack>,
   ) {}
 
-  private async findOwnedFlight(userId: number, id: string) {
+  private async findOwnedFlight(userId: string, id: string) {
     return this.flightRepo.findOne({
       where: { id, userId },
     });
   }
 
-  async findAllWithBestTrack(userId: number) {
+  async findAllWithBestTrack(userId: string) {
     const flights = await this.flightRepo.find({
       where: { userId },
       order: { dateISO: 'DESC' },
@@ -97,7 +97,7 @@ export class FlightService {
     });
   }
 
-  async upsertFlight(userId: number, id: string, dto: UpsertFlightDto) {
+  async upsertFlight(userId: string, id: string, dto: UpsertFlightDto) {
     const existing = await this.flightRepo.findOne({ where: { id } });
     if (existing && existing.userId !== userId) return null;
     const entity = this.flightRepo.create({
@@ -108,7 +108,7 @@ export class FlightService {
     return this.flightRepo.save(entity);
   }
 
-  async patchDescription(userId: number, id: string, description: string) {
+  async patchDescription(userId: string, id: string, description: string) {
     const flight = await this.findOwnedFlight(userId, id);
     if (!flight) return null;
     flight.description = description;
@@ -116,7 +116,7 @@ export class FlightService {
     return { id: saved.id, description: saved.description };
   }
 
-  async patchComment(userId: number, id: string, comment: string) {
+  async patchComment(userId: string, id: string, comment: string) {
     const flight = await this.findOwnedFlight(userId, id);
     if (!flight) return null;
     flight.comments = comment;
@@ -124,7 +124,7 @@ export class FlightService {
     return { id: saved.id, comments: saved.comments };
   }
 
-  async upsertTrack(userId: number, flightId: string, dto: UpsertFlightTrackDto) {
+  async upsertTrack(userId: string, flightId: string, dto: UpsertFlightTrackDto) {
     const flight = await this.findOwnedFlight(userId, flightId);
     if (!flight) return null;
     const existing = await this.flightTrackRepo.findOne({
@@ -144,7 +144,7 @@ export class FlightService {
   }
 
   async upsertTrackWithRaw(
-    userId: number,
+    userId: string,
     flightId: string,
     source: TrackSource,
     payload: {
@@ -175,7 +175,7 @@ export class FlightService {
     return this.flightTrackRepo.save(entity);
   }
 
-  async getSamplesText(userId: number, flightId: string, source: TrackSource) {
+  async getSamplesText(userId: string, flightId: string, source: TrackSource) {
     const flight = await this.findOwnedFlight(userId, flightId);
     if (!flight) return null;
     return this.flightTrackRepo.findOne({
@@ -193,7 +193,7 @@ export class FlightService {
   }
 
   async getTrack(
-    userId: number,
+    userId: string,
     flightId: string,
     prefer: TrackSource = 'FORE_FLIGHT',
   ) {
@@ -210,7 +210,7 @@ export class FlightService {
     });
   }
 
-  async deleteFlight(userId: number, id: string) {
+  async deleteFlight(userId: string, id: string) {
     const flight = await this.findOwnedFlight(userId, id);
     if (!flight) return null;
 
