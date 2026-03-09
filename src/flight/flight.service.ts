@@ -51,8 +51,17 @@ export class FlightService {
     private flightTrackRepo: Repository<FlightTrack>,
   ) {}
 
-  async findAllWithBestTrack() {
-    const flights = await this.flightRepo.find({ order: { dateISO: 'DESC' } });
+  private async findOwnedFlight(userId: number, id: string) {
+    return this.flightRepo.findOne({
+      where: { id, userId },
+    });
+  }
+
+  async findAllWithBestTrack(userId: number) {
+    const flights = await this.flightRepo.find({
+      where: { userId },
+      order: { dateISO: 'DESC' },
+    });
     if (flights.length === 0) return [];
 
     const ids = flights.map((f) => f.id);
@@ -88,32 +97,36 @@ export class FlightService {
     });
   }
 
-  async upsertFlight(id: string, dto: UpsertFlightDto) {
+  async upsertFlight(userId: number, id: string, dto: UpsertFlightDto) {
     const existing = await this.flightRepo.findOne({ where: { id } });
+    if (existing && existing.userId !== userId) return null;
     const entity = this.flightRepo.create({
       ...(existing ?? { id }),
+      userId,
       ...dto,
     });
     return this.flightRepo.save(entity);
   }
 
-  async patchDescription(id: string, description: string) {
-    const flight = await this.flightRepo.findOne({ where: { id } });
+  async patchDescription(userId: number, id: string, description: string) {
+    const flight = await this.findOwnedFlight(userId, id);
     if (!flight) return null;
     flight.description = description;
     const saved = await this.flightRepo.save(flight);
     return { id: saved.id, description: saved.description };
   }
 
-  async patchComment(id: string, comment: string) {
-    const flight = await this.flightRepo.findOne({ where: { id } });
+  async patchComment(userId: number, id: string, comment: string) {
+    const flight = await this.findOwnedFlight(userId, id);
     if (!flight) return null;
     flight.comments = comment;
     const saved = await this.flightRepo.save(flight);
     return { id: saved.id, comments: saved.comments };
   }
 
-  async upsertTrack(flightId: string, dto: UpsertFlightTrackDto) {
+  async upsertTrack(userId: number, flightId: string, dto: UpsertFlightTrackDto) {
+    const flight = await this.findOwnedFlight(userId, flightId);
+    if (!flight) return null;
     const existing = await this.flightTrackRepo.findOne({
       where: { flightId, source: dto.source },
     });
@@ -131,6 +144,7 @@ export class FlightService {
   }
 
   async upsertTrackWithRaw(
+    userId: number,
     flightId: string,
     source: TrackSource,
     payload: {
@@ -143,6 +157,8 @@ export class FlightService {
       samplesText: string | null;
     },
   ) {
+    const flight = await this.findOwnedFlight(userId, flightId);
+    if (!flight) return null;
     const existing = await this.flightTrackRepo.findOne({
       where: { flightId, source },
     });
@@ -159,7 +175,9 @@ export class FlightService {
     return this.flightTrackRepo.save(entity);
   }
 
-  async getSamplesText(flightId: string, source: TrackSource) {
+  async getSamplesText(userId: number, flightId: string, source: TrackSource) {
+    const flight = await this.findOwnedFlight(userId, flightId);
+    if (!flight) return null;
     return this.flightTrackRepo.findOne({
       where: { flightId, source },
       select: [
@@ -174,7 +192,13 @@ export class FlightService {
     });
   }
 
-  async getTrack(flightId: string, prefer: TrackSource = 'FORE_FLIGHT') {
+  async getTrack(
+    userId: number,
+    flightId: string,
+    prefer: TrackSource = 'FORE_FLIGHT',
+  ) {
+    const flight = await this.findOwnedFlight(userId, flightId);
+    if (!flight) return null;
     const first = await this.flightTrackRepo.findOne({
       where: { flightId, source: prefer },
     });
@@ -186,9 +210,12 @@ export class FlightService {
     });
   }
 
-  async deleteFlight(id: string) {
+  async deleteFlight(userId: number, id: string) {
+    const flight = await this.findOwnedFlight(userId, id);
+    if (!flight) return null;
+
     await this.flightTrackRepo.delete({ flightId: id });
-    const res = await this.flightRepo.delete({ id });
+    const res = await this.flightRepo.delete({ id, userId });
     return { deleted: res.affected ? res.affected > 0 : false };
   }
 }

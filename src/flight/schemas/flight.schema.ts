@@ -6,6 +6,10 @@ export class Flight {
   id: string;
 
   @Index()
+  @Column({ type: 'int' })
+  userId: number;
+
+  @Index()
   @Column({ type: 'varchar', length: 16 })
   dateISO: string;
 

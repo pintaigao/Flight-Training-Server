@@ -4,10 +4,13 @@ import {
   Get,
   NotFoundException,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { TrackService } from './track.service';
+import { SessionAuthGuard } from '../auth/sessionAuth.guard';
 
 @Controller('track')
+@UseGuards(SessionAuthGuard)
 export class TrackController {
   constructor(private readonly trackService: TrackService) {}
 
