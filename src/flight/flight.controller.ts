@@ -121,7 +121,7 @@ export class FlightController {
     if (!userId) throw new UnauthorizedException();
     const res = await this.flightService.getTrack(userId, flightId, preferred);
     if (!res) throw new NotFoundException('No track found');
-    return sanitizeTrack(res);
+    return { ...sanitizeTrack(res), source: 'FORE_FLIGHT' as const };
   }
 
   @Delete(':id')
