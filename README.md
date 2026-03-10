@@ -32,8 +32,7 @@ $ npm install
 ```
 
 ## Environment
-
-- `FLIGHTAWARE_API_KEY` (required for track lookup)
+None.
 
 ## Compile and run the project
 
@@ -47,15 +46,6 @@ $ npm run start:dev
 # production mode
 $ npm run start:prod
 ```
-
-## Track lookup (tail → most recent morning track)
-
-Endpoint:
-- `GET /track/recent-by-tail?tail=N77GX`
-
-Behavior:
-- Finds the most recent flight in the last 48 hours whose departure time is between `06:00–12:00` in `America/Chicago`
-- Fetches its track from FlightAware AeroAPI and returns it as GeoJSON `Feature<LineString>`
 
 ## Run tests
 

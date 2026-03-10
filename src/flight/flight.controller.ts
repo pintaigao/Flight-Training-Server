@@ -103,7 +103,10 @@ export class FlightController {
     if (!dto?.feature) throw new BadRequestException('feature is required');
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException();
-    const saved = await this.flightService.upsertTrack(userId, flightId, dto);
+    const saved = await this.flightService.upsertTrack(userId, flightId, {
+      ...dto,
+      source: 'FORE_FLIGHT',
+    });
     if (!saved) throw new NotFoundException('Flight not found');
     return saved;
   }
@@ -112,7 +115,8 @@ export class FlightController {
   async getTrack(@Param('id') id: string, @Req() req: Request, @Query('prefer') prefer?: string) {
     const flightId = String(id ?? '').trim();
     if (!flightId) throw new BadRequestException('id is required');
-    const preferred: TrackSource = prefer === 'FLIGHTAWARE' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
+    const _prefer = prefer; // kept for compatibility; ignored (ForeFlight-only)
+    const preferred: TrackSource = 'FORE_FLIGHT';
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException();
     const res = await this.flightService.getTrack(userId, flightId, preferred);
@@ -144,7 +148,8 @@ export class FlightController {
     if (!flightId) throw new BadRequestException('id is required');
     if (!file) throw new BadRequestException('file is required');
 
-    const src: TrackSource = source === 'FLIGHTAWARE' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
+    const _source = source; // kept for compatibility; ignored (ForeFlight-only)
+    const src: TrackSource = 'FORE_FLIGHT';
     const filename = file.originalname ?? null;
     const mime = file.mimetype ?? null;
 
@@ -175,7 +180,8 @@ export class FlightController {
   async getSamples(@Param('id') id: string, @Req() req: Request, @Query('source') source?: string) {
     const flightId = String(id ?? '').trim();
     if (!flightId) throw new BadRequestException('id is required');
-    const src: TrackSource = source === 'FLIGHTAWARE' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
+    const _source = source; // kept for compatibility; ignored (ForeFlight-only)
+    const src: TrackSource = 'FORE_FLIGHT';
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException();
     const row = await this.flightService.getSamplesText(userId, flightId, src);

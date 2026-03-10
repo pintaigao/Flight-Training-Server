@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Not, Repository } from 'typeorm';
 import { Flight } from './schemas/flight.schema';
 import { FlightTrack, type TrackSource } from './schemas/flightTrack.schema';
 import type { UpsertFlightDto } from './dto/flight.dto';
@@ -65,26 +65,25 @@ export class FlightService {
     const tracks = await this.flightTrackRepo.find({
       where: {
         flightId: In(ids),
-        source: In(['FORE_FLIGHT', 'FLIGHTAWARE'] as TrackSource[]),
       },
     });
 
-    const byFlight = new Map<string, { fore?: FlightTrack; fa?: FlightTrack }>();
+    const byFlight = new Map<string, { fore?: FlightTrack; any?: FlightTrack }>();
     for (const t of tracks) {
       const cur = byFlight.get(t.flightId) ?? {};
-      if (t.source === 'FORE_FLIGHT') cur.fore = t;
-      if (t.source === 'FLIGHTAWARE') cur.fa = t;
+      if (String(t.source) === 'FORE_FLIGHT') cur.fore = t;
+      if (!cur.any || t.createdAt > cur.any.createdAt) cur.any = t;
       byFlight.set(t.flightId, cur);
     }
 
     return flights.map((f) => {
       const pair = byFlight.get(f.id);
-      const best = pair?.fore ?? pair?.fa ?? null;
+      const best = pair?.fore ?? pair?.any ?? null;
       const meta = best?.rawFormat === 'kml' ? normalizeKmlMeta(best?.meta) : best?.meta;
       return {
         ...f,
         track: best?.feature ?? null,
-        trackSource: best?.source ?? null,
+        trackSource: best ? 'FORE_FLIGHT' : null,
         trackMeta: meta ?? null,
       };
     });
@@ -171,8 +170,14 @@ export class FlightService {
   async getSamplesText(userId: string, flightId: string, source: TrackSource) {
     const flight = await this.findOwnedFlight(userId, flightId);
     if (!flight) return null;
-    return this.flightTrackRepo.findOne({
+    const row = await this.flightTrackRepo.findOne({
       where: { flightId, source },
+      select: ['id', 'flightId', 'source', 'rawFormat', 'meta', 'samplesText', 'createdAt'],
+    });
+    if (row?.samplesText) return row;
+    return this.flightTrackRepo.findOne({
+      where: { flightId, samplesText: Not(IsNull()) },
+      order: { createdAt: 'DESC' },
       select: ['id', 'flightId', 'source', 'rawFormat', 'meta', 'samplesText', 'createdAt'],
     });
   }
@@ -184,9 +189,9 @@ export class FlightService {
       where: { flightId, source: prefer },
     });
     if (first) return first;
-    const fallback: TrackSource = prefer === 'FORE_FLIGHT' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
     return this.flightTrackRepo.findOne({
-      where: { flightId, source: fallback },
+      where: { flightId },
+      order: { createdAt: 'DESC' },
     });
   }
 
