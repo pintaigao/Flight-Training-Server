@@ -31,4 +31,18 @@ export class UserService {
     const valid = await bcrypt.compare(password, user.password);
     return valid ? user : null;
   }
+
+  async changePassword(id: string, oldPassword: string, newPassword: string) {
+    const user = await this.findById(id);
+    if (!user) return null;
+
+    const ok = await bcrypt.compare(oldPassword, user.password);
+    if (!ok) return null;
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+
+    user.password = hashed;
+    await this.userRepo.save(user);
+    return true;
+  }
 }

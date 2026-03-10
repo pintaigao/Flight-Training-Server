@@ -25,8 +25,7 @@ function normalizeKmlMeta(meta: any | null) {
     };
   }
 
-  const conv = (n: any) =>
-    typeof n === 'number' && Number.isFinite(n) ? n * METERS_TO_FEET : n;
+  const conv = (n: any) => (typeof n === 'number' && Number.isFinite(n) ? n * METERS_TO_FEET : n);
 
   return {
     ...meta,
@@ -46,15 +45,13 @@ function normalizeKmlMeta(meta: any | null) {
 export class FlightService {
   constructor(
     @InjectRepository(Flight)
-    private flightRepo: Repository<Flight>,
     @InjectRepository(FlightTrack)
+    private flightRepo: Repository<Flight>,
     private flightTrackRepo: Repository<FlightTrack>,
   ) {}
 
   private async findOwnedFlight(userId: string, id: string) {
-    return this.flightRepo.findOne({
-      where: { id, userId },
-    });
+    return this.flightRepo.findOne({ where: { id, userId } });
   }
 
   async findAllWithBestTrack(userId: string) {
@@ -72,10 +69,7 @@ export class FlightService {
       },
     });
 
-    const byFlight = new Map<
-      string,
-      { fore?: FlightTrack; fa?: FlightTrack }
-    >();
+    const byFlight = new Map<string, { fore?: FlightTrack; fa?: FlightTrack }>();
     for (const t of tracks) {
       const cur = byFlight.get(t.flightId) ?? {};
       if (t.source === 'FORE_FLIGHT') cur.fore = t;
@@ -86,8 +80,7 @@ export class FlightService {
     return flights.map((f) => {
       const pair = byFlight.get(f.id);
       const best = pair?.fore ?? pair?.fa ?? null;
-      const meta =
-        best?.rawFormat === 'kml' ? normalizeKmlMeta(best?.meta) : best?.meta;
+      const meta = best?.rawFormat === 'kml' ? normalizeKmlMeta(best?.meta) : best?.meta;
       return {
         ...f,
         track: best?.feature ?? null,
@@ -180,31 +173,18 @@ export class FlightService {
     if (!flight) return null;
     return this.flightTrackRepo.findOne({
       where: { flightId, source },
-      select: [
-        'id',
-        'flightId',
-        'source',
-        'rawFormat',
-        'meta',
-        'samplesText',
-        'createdAt',
-      ],
+      select: ['id', 'flightId', 'source', 'rawFormat', 'meta', 'samplesText', 'createdAt'],
     });
   }
 
-  async getTrack(
-    userId: string,
-    flightId: string,
-    prefer: TrackSource = 'FORE_FLIGHT',
-  ) {
+  async getTrack(userId: string, flightId: string, prefer: TrackSource = 'FORE_FLIGHT') {
     const flight = await this.findOwnedFlight(userId, flightId);
     if (!flight) return null;
     const first = await this.flightTrackRepo.findOne({
       where: { flightId, source: prefer },
     });
     if (first) return first;
-    const fallback: TrackSource =
-      prefer === 'FORE_FLIGHT' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
+    const fallback: TrackSource = prefer === 'FORE_FLIGHT' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
     return this.flightTrackRepo.findOne({
       where: { flightId, source: fallback },
     });

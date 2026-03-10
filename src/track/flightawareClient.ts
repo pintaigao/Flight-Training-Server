@@ -18,9 +18,7 @@ async function aeroFetch(path: string): Promise<AeroApiResponse> {
 
   const text = await res.text();
   if (!res.ok) {
-    throw new Error(
-      `AeroAPI error ${res.status}: ${text || '(empty response)'}`,
-    );
+    throw new Error(`AeroAPI error ${res.status}: ${text || '(empty response)'}`);
   }
 
   if (!text) return null;
@@ -31,14 +29,10 @@ async function aeroFetch(path: string): Promise<AeroApiResponse> {
   }
 }
 
-export async function listFlightsByTail(
-  tail: string,
-): Promise<AeroApiResponse> {
+export async function listFlightsByTail(tail: string): Promise<AeroApiResponse> {
   return aeroFetch(`/flights/${encodeURIComponent(tail)}?max_pages=1`);
 }
 
-export async function getTrackByFaFlightId(
-  faFlightId: string,
-): Promise<AeroApiResponse> {
+export async function getTrackByFaFlightId(faFlightId: string): Promise<AeroApiResponse> {
   return aeroFetch(`/flights/${encodeURIComponent(faFlightId)}/track`);
 }

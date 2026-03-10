@@ -1,16 +1,9 @@
-import {
-  BadRequestException,
-  Controller,
-  Get,
-  NotFoundException,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { BadRequestException, Controller, Get, NotFoundException, Query, UseGuards } from '@nestjs/common';
 import { TrackService } from './track.service';
-import { SessionAuthGuard } from '../auth/sessionAuth.guard';
+import { AuthGuard } from '../auth/auth.guard';
 
 @Controller('track')
-@UseGuards(SessionAuthGuard)
+@UseGuards(AuthGuard)
 export class TrackController {
   constructor(private readonly trackService: TrackService) {}
 

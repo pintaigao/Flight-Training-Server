@@ -40,10 +40,7 @@ describe('TrackService', () => {
   it('returns null when no flight matches', async () => {
     (listFlightsByTail as jest.Mock).mockResolvedValue({ flights: [] });
     const svc = new TrackService();
-    const res = await svc.getRecentByTail(
-      'N77GX',
-      new Date('2026-01-16T12:00:00Z'),
-    );
+    const res = await svc.getRecentByTail('N77GX', new Date('2026-01-16T12:00:00Z'));
     expect(res).toBeNull();
   });
 });

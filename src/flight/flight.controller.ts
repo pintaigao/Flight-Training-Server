@@ -1,152 +1,121 @@
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  Delete,
-  Get,
-  NotFoundException,
-  Patch,
-  Param,
-  Post,
-  Put,
-  Query,
-  Req,
-  UploadedFile,
-  UseGuards,
-  UseInterceptors,
-} from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, NotFoundException, Patch, Param, Post, Put, Query, Req, UnauthorizedException, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { AuthGuard } from '../auth/auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FlightService } from './flight.service';
-import {
-  PatchFlightCommentDto,
-  PatchFlightDescriptionDto,
-  UpsertFlightDto,
-} from './dto/flight.dto';
-import { UpsertFlightTrackDto } from './dto/track.dto';
-import type { TrackSource } from './schemas/flightTrack.schema';
 import { parseForeFlightKml } from './foreflightKml';
-import { SessionAuthGuard } from '../auth/sessionAuth.guard';
+import { PatchFlightCommentDto, PatchFlightDescriptionDto, UpsertFlightDto } from './dto/flight.dto';
+import { UpsertFlightTrackDto } from './dto/track.dto';
 import type { Request } from 'express';
+import type { TrackSource } from './schemas/flightTrack.schema';
 
 const METERS_TO_FEET = 3.280839895013123;
+const ALT_FT_MIN_VALID = -5_000;
+const ALT_FT_MAX_VALID = 100_000;
+
+function sanitizeAltFt(alt: unknown): number | null {
+  if (typeof alt !== 'number' || !Number.isFinite(alt)) return null;
+  if (alt < ALT_FT_MIN_VALID || alt > ALT_FT_MAX_VALID) return null;
+  return alt;
+}
 
 function normalizeKmlSamples(samples: any[], meta: any | null) {
   // Old imports stored meters in altAglFt (labeled as feet). Only convert those.
-  if (!meta || meta.altRef !== 'AGL') return samples;
-  return samples.map((s) => {
-    const alt = s?.altAglFt;
-    if (typeof alt !== 'number' || !Number.isFinite(alt)) return s;
-    return { ...s, altAglFt: alt * METERS_TO_FEET };
+  const converted =
+    meta && meta.altRef === 'AGL'
+      ? samples.map((s) => {
+          const alt = s?.altAglFt;
+          if (typeof alt !== 'number' || !Number.isFinite(alt)) return s;
+          return { ...s, altAglFt: alt * METERS_TO_FEET };
+        })
+      : samples;
+
+  // Defensive cleanup: strip sentinel/outlier altitudes so charts don't explode.
+  return converted.map((s) => {
+    const alt = sanitizeAltFt(s?.altAglFt);
+    return alt === null ? { ...s, altAglFt: null } : s;
   });
 }
 
 function sanitizeTrack(t: any) {
   if (!t) return t;
-  const { rawText, samplesText, ...rest } = t;
+  const { rawText: _rawText, samplesText: _samplesText, ...rest } = t;
   return rest;
 }
 
 @Controller('flight')
-@UseGuards(SessionAuthGuard)
+@UseGuards(AuthGuard)
 export class FlightController {
   constructor(private readonly flightService: FlightService) {}
 
   @Get()
   findAll(@Req() req: Request) {
-    return this.flightService.findAllWithBestTrack(req.session.userId!);
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException();
+    return this.flightService.findAllWithBestTrack(userId);
   }
 
+  // upsert: update + insert: 会先查有没有同 id 的 flight，有就更新，没有就创建再保存
   @Put(':id')
-  async upsert(
-    @Param('id') id: string,
-    @Body() dto: UpsertFlightDto,
-    @Req() req: Request,
-  ) {
+  async upsert(@Param('id') id: string, @Body() dto: UpsertFlightDto, @Req() req: Request) {
     const normalized = String(id ?? '').trim();
     if (!normalized) throw new BadRequestException('id is required');
-    const saved = await this.flightService.upsertFlight(
-      req.session.userId!,
-      normalized,
-      dto,
-    );
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException();
+    const saved = await this.flightService.upsertFlight(userId, normalized, dto);
     if (!saved) throw new NotFoundException('Flight not found');
     return saved;
   }
 
   @Patch(':id/description')
-  async patchDescription(
-    @Param('id') id: string,
-    @Body() dto: PatchFlightDescriptionDto,
-    @Req() req: Request,
-  ) {
+  async patchDescription(@Param('id') id: string, @Body() dto: PatchFlightDescriptionDto, @Req() req: Request) {
     const flightId = String(id ?? '').trim();
     if (!flightId) throw new BadRequestException('id is required');
     if (!dto || typeof dto.description !== 'string')
       throw new BadRequestException('description is required');
     if (dto.description.length > 280)
       throw new BadRequestException('description is too long (max 280)');
-    const res = await this.flightService.patchDescription(
-      req.session.userId!,
-      flightId,
-      dto.description,
-    );
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException();
+    const res = await this.flightService.patchDescription(userId, flightId, dto.description);
     if (!res) throw new NotFoundException('Flight not found');
     return res;
   }
 
   @Patch(':id/comment')
-  async patchComment(
-    @Param('id') id: string,
-    @Body() dto: PatchFlightCommentDto,
-    @Req() req: Request,
-  ) {
+  async patchComment(@Param('id') id: string, @Body() dto: PatchFlightCommentDto, @Req() req: Request) {
     const flightId = String(id ?? '').trim();
     if (!flightId) throw new BadRequestException('id is required');
     if (!dto || typeof dto.comment !== 'string')
       throw new BadRequestException('comment is required');
-    const res = await this.flightService.patchComment(
-      req.session.userId!,
-      flightId,
-      dto.comment,
-    );
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException();
+    const res = await this.flightService.patchComment(userId, flightId, dto.comment);
     if (!res) throw new NotFoundException('Flight not found');
     return res;
   }
 
+  //会先查有没有同 id 的 flight，有就更新，没有就创建再保存
   @Put(':id/track')
-  async upsertTrack(
-    @Param('id') id: string,
-    @Body() dto: UpsertFlightTrackDto,
-    @Req() req: Request,
-  ) {
+  async upsertTrack(@Param('id') id: string, @Body() dto: UpsertFlightTrackDto, @Req() req: Request) {
     const flightId = String(id ?? '').trim();
     if (!flightId) throw new BadRequestException('id is required');
     if (!dto?.source) throw new BadRequestException('source is required');
     if (!dto?.feature) throw new BadRequestException('feature is required');
-    const saved = await this.flightService.upsertTrack(
-      req.session.userId!,
-      flightId,
-      dto,
-    );
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException();
+    const saved = await this.flightService.upsertTrack(userId, flightId, dto);
     if (!saved) throw new NotFoundException('Flight not found');
     return saved;
   }
 
   @Get(':id/track')
-  async getTrack(
-    @Param('id') id: string,
-    @Req() req: Request,
-    @Query('prefer') prefer?: string,
-  ) {
+  async getTrack(@Param('id') id: string, @Req() req: Request, @Query('prefer') prefer?: string) {
     const flightId = String(id ?? '').trim();
     if (!flightId) throw new BadRequestException('id is required');
-    const preferred: TrackSource =
-      prefer === 'FLIGHTAWARE' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
-    const res = await this.flightService.getTrack(
-      req.session.userId!,
-      flightId,
-      preferred,
-    );
+    const preferred: TrackSource = prefer === 'FLIGHTAWARE' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException();
+    const res = await this.flightService.getTrack(userId, flightId, preferred);
     if (!res) throw new NotFoundException('No track found');
     return sanitizeTrack(res);
   }
@@ -155,34 +124,27 @@ export class FlightController {
   async delete(@Param('id') id: string, @Req() req: Request) {
     const flightId = String(id ?? '').trim();
     if (!flightId) throw new BadRequestException('id is required');
-    const res = await this.flightService.deleteFlight(req.session.userId!, flightId);
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException();
+    const res = await this.flightService.deleteFlight(userId, flightId);
     if (!res) throw new NotFoundException('Flight not found');
     return res;
   }
 
   @Post(':id/track/upload')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      limits: { fileSize: 50 * 1024 * 1024 },
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 50 * 1024 * 1024 } }))
   async uploadTrack(
     @Param('id') id: string,
     @Req() req: Request,
     @Query('source') source?: string,
     @UploadedFile()
-    file?: {
-      originalname?: string;
-      mimetype?: string;
-      buffer: Buffer;
-    },
+    file?: { originalname?: string; mimetype?: string; buffer: Buffer },
   ) {
     const flightId = String(id ?? '').trim();
     if (!flightId) throw new BadRequestException('id is required');
     if (!file) throw new BadRequestException('file is required');
 
-    const src: TrackSource =
-      source === 'FLIGHTAWARE' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
+    const src: TrackSource = source === 'FLIGHTAWARE' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
     const filename = file.originalname ?? null;
     const mime = file.mimetype ?? null;
 
@@ -194,7 +156,9 @@ export class FlightController {
       id: flightId,
     };
 
-    const saved = await this.flightService.upsertTrackWithRaw(req.session.userId!, flightId, src, {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException();
+    const saved = await this.flightService.upsertTrackWithRaw(userId, flightId, src, {
       feature: parsed.feature,
       meta: { ...(parsed.meta ?? {}), originalFilename: filename },
       rawText: text,
@@ -208,20 +172,13 @@ export class FlightController {
   }
 
   @Get(':id/track/samples')
-  async getSamples(
-    @Param('id') id: string,
-    @Req() req: Request,
-    @Query('source') source?: string,
-  ) {
+  async getSamples(@Param('id') id: string, @Req() req: Request, @Query('source') source?: string) {
     const flightId = String(id ?? '').trim();
     if (!flightId) throw new BadRequestException('id is required');
-    const src: TrackSource =
-      source === 'FLIGHTAWARE' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
-    const row = await this.flightService.getSamplesText(
-      req.session.userId!,
-      flightId,
-      src,
-    );
+    const src: TrackSource = source === 'FLIGHTAWARE' ? 'FLIGHTAWARE' : 'FORE_FLIGHT';
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException();
+    const row = await this.flightService.getSamplesText(userId, flightId, src);
     if (!row?.samplesText) throw new NotFoundException('No samples found');
     let samples: any;
     try {

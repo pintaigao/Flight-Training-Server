@@ -3,18 +3,13 @@ const WHEN_RE = /<when>([^<]+)<\/when>/gi;
 const COORD_RE = /<gx:coord>([^<]+)<\/gx:coord>/gi;
 
 const METERS_TO_FEET = 3.280839895013123;
+// ForeFlight exports sometimes contain sentinel altitude values (e.g. -100000)
+// to represent "unknown". Treat very low altitudes as missing to avoid
+// destroying chart scales.
+const ALT_METERS_MIN_VALID = -10_000;
 
-function inBox(
-  lat: number,
-  lng: number,
-  box: { latMin: number; latMax: number; lngMin: number; lngMax: number },
-) {
-  return (
-    lat >= box.latMin &&
-    lat <= box.latMax &&
-    lng >= box.lngMin &&
-    lng <= box.lngMax
-  );
+function inBox(lat: number, lng: number, box: { latMin: number; latMax: number; lngMin: number; lngMax: number }) {
+  return lat >= box.latMin && lat <= box.latMax && lng >= box.lngMin && lng <= box.lngMax;
 }
 
 // Heuristic mapping for US time zones based on lat/lng.
@@ -26,22 +21,13 @@ function guessUsTimeZoneFromLatLng(lat: number, lng: number) {
   if (!inBox(lat, lng, US_BOUNDS)) return null;
 
   // Hawaii
-  if (
-    inBox(lat, lng, { latMin: 18, latMax: 23.5, lngMin: -161, lngMax: -154 })
-  )
-    return 'Pacific/Honolulu';
+  if (inBox(lat, lng, { latMin: 18, latMax: 23.5, lngMin: -161, lngMax: -154 })) return 'Pacific/Honolulu';
 
   // Alaska (rough, excludes Aleutians edge cases)
-  if (
-    inBox(lat, lng, { latMin: 51, latMax: 72, lngMin: -170, lngMax: -129 })
-  )
-    return 'America/Anchorage';
+  if (inBox(lat, lng, { latMin: 51, latMax: 72, lngMin: -170, lngMax: -129 })) return 'America/Anchorage';
 
   // Phoenix keeps MST year-round; rough AZ box.
-  if (
-    inBox(lat, lng, { latMin: 31, latMax: 37.5, lngMin: -115, lngMax: -108.8 })
-  )
-    return 'America/Phoenix';
+  if (inBox(lat, lng, { latMin: 31, latMax: 37.5, lngMin: -115, lngMax: -108.8 })) return 'America/Phoenix';
 
   // Longitude-based fallback across the lower 48.
   if (lng <= -114) return 'America/Los_Angeles';
@@ -50,10 +36,7 @@ function guessUsTimeZoneFromLatLng(lat: number, lng: number) {
   return 'America/New_York';
 }
 
-function haversineMeters(
-  a: { lat: number; lng: number },
-  b: { lat: number; lng: number },
-) {
+function haversineMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
   const R = 6371000;
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
@@ -62,8 +45,7 @@ function haversineMeters(
   const lat2 = toRad(b.lat);
   const sinDLat = Math.sin(dLat / 2);
   const sinDLng = Math.sin(dLng / 2);
-  const h =
-    sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
+  const h = sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
   const c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
   return R * c;
 }
@@ -132,9 +114,7 @@ export function parseForeFlightKml(text: string): ParsedForeFlightKml {
     const lat = Number(parts[1]);
     if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue;
     const altMeters = parts.length >= 3 ? Number(parts[2]) : NaN;
-    const altAglFt = Number.isFinite(altMeters)
-      ? altMeters * METERS_TO_FEET
-      : null;
+    const altAglFt = Number.isFinite(altMeters) && altMeters > ALT_METERS_MIN_VALID ? altMeters * METERS_TO_FEET : null;
     coords.push({ lng, lat, altAglFt });
   }
 

@@ -13,11 +13,7 @@ function getChicagoHourMinute(date: Date): { hour: number; minute: number } {
   return { hour, minute };
 }
 
-export function isChicagoMorning(
-  isoString: string,
-  startHHMM = '06:00',
-  endHHMM = '12:00',
-): boolean {
+export function isChicagoMorning(isoString: string, startHHMM = '06:00', endHHMM = '12:00'): boolean {
   const date = new Date(isoString);
   if (Number.isNaN(date.getTime())) return false;
 

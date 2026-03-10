@@ -1,15 +1,8 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Get,
-  Req,
-  Res,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Controller, Post, Body, Get, Req, Res, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UserService } from '../user/user.service';
 import type { Request, Response } from 'express';
+import { readBearerToken, signAccessToken, verifyAccessToken } from '../utils/jwt';
 
 @Controller('auth')
 export class AuthController {
@@ -18,12 +11,17 @@ export class AuthController {
     private userService: UserService,
   ) {}
 
+  private mode() {
+    return (process.env.AUTH_MODE ?? 'session').toLowerCase();
+  }
+
   @Post('register')
-  async register(
-    @Body() body: { email: string; password: string },
-    @Req() req: Request,
-  ) {
+  async register(@Body() body: { email: string; password: string }, @Req() req: Request) {
     const user = await this.userService.create(body.email, body.password);
+    if (this.mode() === 'jwt') {
+      const accessToken = signAccessToken({ sub: String(user.id), email: user.email });
+      return { id: String(user.id), email: user.email, accessToken };
+    }
     req.session.userId = user.id;
     return { id: String(user.id), email: user.email };
   }
@@ -32,12 +30,17 @@ export class AuthController {
   async login(@Body() body: { email: string; password: string }, @Req() req: Request) {
     const user = await this.authService.validateUser(body.email, body.password);
     if (!user) throw new UnauthorizedException('Invalid credentials');
+    if (this.mode() === 'jwt') {
+      const accessToken = signAccessToken({ sub: String(user.id), email: user.email });
+      return { id: String(user.id), email: user.email, accessToken };
+    }
     req.session.userId = user.id;
     return { id: String(user.id), email: user.email };
   }
 
   @Post('logout')
   logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    if (this.mode() === 'jwt') return { ok: true };
     try {
       req.session.destroy(() => {});
     } catch {
@@ -47,8 +50,27 @@ export class AuthController {
     return { ok: true };
   }
 
-  @Get('me')
-  async me(@Req() req: Request) {
+  @Get('profile')
+  async profile(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    // Never cache auth state; caching can cause 304 + empty body and break refresh flows.
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+    if (this.mode() === 'jwt') {
+      const token = readBearerToken(req.headers.authorization);
+      if (!token) throw new UnauthorizedException();
+      let payload: { sub: string; email: string };
+      try {
+        payload = verifyAccessToken(token);
+      } catch {
+        throw new UnauthorizedException();
+      }
+      const user = await this.userService.findById(payload.sub);
+      if (!user) throw new UnauthorizedException();
+      return { id: String(user.id), email: user.email };
+    }
+
     const userId = req.session.userId;
     if (!userId) throw new UnauthorizedException();
     const user = await this.userService.findById(userId);

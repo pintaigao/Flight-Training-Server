@@ -6,15 +6,12 @@ import { isChicagoMorning } from './timeWindow';
 export class TrackService {
   async getRecentByTail(tail: string, now = new Date()) {
     const list = await listFlightsByTail(tail);
-    const flights: any[] = (list?.flights ??
-      list?.data?.flights ??
-      []) as any[];
+    const flights: any[] = (list?.flights ?? list?.data?.flights ?? []) as any[];
 
     const nowMs = now.getTime();
     const windowStartMs = nowMs - 48 * 60 * 60 * 1000;
 
-    let best: { faFlightId: string; depMs: number; depISO: string } | null =
-      null;
+    let best: { faFlightId: string; depMs: number; depISO: string } | null = null;
     for (const f of flights) {
       const faFlightId = String(f?.fa_flight_id ?? f?.faFlightId ?? '');
       if (!faFlightId) continue;
@@ -34,9 +31,7 @@ export class TrackService {
 
     const trackRes = await getTrackByFaFlightId(best.faFlightId);
     const points = normalizeTrackPoints(trackRes);
-    const coordinates: [number, number][] = points
-      .map((p) => toLngLat(p))
-      .filter((x): x is [number, number] => !!x);
+    const coordinates: [number, number][] = points.map((p) => toLngLat(p)).filter((x): x is [number, number] => !!x);
 
     return {
       tail,
@@ -52,13 +47,7 @@ export class TrackService {
 }
 
 function pickDepartureISO(flight: any): string | null {
-  const candidates = [
-    flight?.departure_time,
-    flight?.actual_departure_time,
-    flight?.estimated_departure_time,
-    flight?.scheduled_departure_time,
-    flight?.filed_departure_time,
-  ];
+  const candidates = [flight?.departure_time, flight?.actual_departure_time, flight?.estimated_departure_time, flight?.scheduled_departure_time, flight?.filed_departure_time];
   for (const c of candidates) {
     const iso = coerceToISO(c);
     if (iso) return iso;
