@@ -20,8 +20,10 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@nestjs/apollo": "^13.2.4",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
+    "@nestjs/graphql": "^13.2.4",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
@@ -30,6 +32,7 @@
     "connect-redis": "^8.0.2",
     "dotenv": "^17.3.1",
     "express-session": "^1.18.2",
+    "graphql": "^16.13.1",
     "mysql2": "^3.18.2",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
