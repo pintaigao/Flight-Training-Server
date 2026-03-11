@@ -10,5 +10,6 @@ import { AuthModule } from '../auth/auth.module';
   imports: [TypeOrmModule.forFeature([Flight, FlightTrack]), AuthModule],
   providers: [FlightService],
   controllers: [FlightController],
+  exports: [FlightService],
 })
 export class FlightModule {}

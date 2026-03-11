@@ -1,5 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import type { Request } from 'express';
+import { GqlExecutionContext } from '@nestjs/graphql';
 import { readBearerToken, verifyAccessToken } from '../utils/jwt';
 
 @Injectable()
@@ -14,8 +15,16 @@ export class AuthGuard implements CanActivate {
     }
   }
 
+  private getRequest(context: ExecutionContext): Request {
+    if (context.getType() === 'http') {
+      return context.switchToHttp().getRequest<Request>();
+    }
+    const gql = GqlExecutionContext.create(context);
+    return gql.getContext<{ req: Request }>().req;
+  }
+
   private canActivateSession(context: ExecutionContext) {
-    const req = context.switchToHttp().getRequest<Request>();
+    const req = this.getRequest(context);
     if (req.session?.userId) {
       req.user = { id: String(req.session.userId) };
       return true;
@@ -24,7 +33,7 @@ export class AuthGuard implements CanActivate {
   }
 
   private canActivateJwt(context: ExecutionContext) {
-    const req = context.switchToHttp().getRequest<Request>();
+    const req = this.getRequest(context);
     const token = readBearerToken(req.headers.authorization);
     if (!token) throw new UnauthorizedException();
     try {

@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { FlightModule } from './flight/flight.module';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
+import { GraphqlBffModule } from './graphql/graphql.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { AuthModule } from './auth/auth.module';
     AuthModule,
     FlightModule,
     UserModule,
+    GraphqlBffModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [AppService],
