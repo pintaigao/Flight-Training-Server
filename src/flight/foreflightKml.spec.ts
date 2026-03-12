@@ -14,8 +14,8 @@ describe('parseForeFlightKml', () => {
     `;
 
     const parsed = parseForeFlightKml(kml);
-    expect(parsed.samples[0]?.altAglFt).toBeCloseTo(328.0839895, 6);
-    expect(parsed.samples[1]?.altAglFt).toBeCloseTo(656.167979, 6);
+    expect(parsed.samples[0]?.altAglFt).toBe(330);
+    expect(parsed.samples[1]?.altAglFt).toBe(660);
 
     expect(parsed.meta.altRef).toBe('MSL');
     expect(parsed.meta.altUnit).toBe('ft');
@@ -24,8 +24,8 @@ describe('parseForeFlightKml', () => {
     expect(parsed.meta.departureTimeZone).toBe('America/Los_Angeles');
 
     const stats = parsed.meta?.stats;
-    expect(stats.altMinFt).toBeCloseTo(328.0839895, 6);
-    expect(stats.altMaxFt).toBeCloseTo(656.167979, 6);
+    expect(stats.altMinFt).toBe(330);
+    expect(stats.altMaxFt).toBe(660);
   });
 
   it('treats sentinel altitudes as missing', () => {
@@ -43,12 +43,12 @@ describe('parseForeFlightKml', () => {
     `;
 
     const parsed = parseForeFlightKml(kml);
-    expect(parsed.samples[0]?.altAglFt).toBeCloseTo(328.0839895, 6);
+    expect(parsed.samples[0]?.altAglFt).toBe(330);
     expect(parsed.samples[1]?.altAglFt).toBeNull();
-    expect(parsed.samples[2]?.altAglFt).toBeCloseTo(656.167979, 6);
+    expect(parsed.samples[2]?.altAglFt).toBe(660);
 
     const stats = parsed.meta?.stats;
-    expect(stats.altMinFt).toBeCloseTo(328.0839895, 6);
-    expect(stats.altMaxFt).toBeCloseTo(656.167979, 6);
+    expect(stats.altMinFt).toBe(330);
+    expect(stats.altMaxFt).toBe(660);
   });
 });

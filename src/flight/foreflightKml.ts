@@ -7,6 +7,11 @@ const METERS_TO_FEET = 3.280839895013123;
 // to represent "unknown". Treat very low altitudes as missing to avoid
 // destroying chart scales.
 const ALT_METERS_MIN_VALID = -10_000;
+const ALT_FT_ROUND_TO = 10;
+
+function roundTo(n: number, step: number) {
+  return Math.round(n / step) * step;
+}
 
 function inBox(lat: number, lng: number, box: { latMin: number; latMax: number; lngMin: number; lngMax: number }) {
   return lat >= box.latMin && lat <= box.latMax && lng >= box.lngMin && lng <= box.lngMax;
@@ -114,7 +119,10 @@ export function parseForeFlightKml(text: string): ParsedForeFlightKml {
     const lat = Number(parts[1]);
     if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue;
     const altMeters = parts.length >= 3 ? Number(parts[2]) : NaN;
-    const altAglFt = Number.isFinite(altMeters) && altMeters > ALT_METERS_MIN_VALID ? altMeters * METERS_TO_FEET : null;
+    const altAglFtRaw =
+      Number.isFinite(altMeters) && altMeters > ALT_METERS_MIN_VALID ? altMeters * METERS_TO_FEET : null;
+    const altAglFt =
+      typeof altAglFtRaw === 'number' ? roundTo(altAglFtRaw, ALT_FT_ROUND_TO) : null;
     coords.push({ lng, lat, altAglFt });
   }
 
