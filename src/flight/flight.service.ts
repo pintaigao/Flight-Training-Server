@@ -44,10 +44,8 @@ function normalizeKmlMeta(meta: any | null) {
 @Injectable()
 export class FlightService {
   constructor(
-    @InjectRepository(Flight)
-    @InjectRepository(FlightTrack)
-    private flightRepo: Repository<Flight>,
-    private flightTrackRepo: Repository<FlightTrack>,
+    @InjectRepository(Flight) private flightRepo: Repository<Flight>,
+    @InjectRepository(FlightTrack) private flightTrackRepo: Repository<FlightTrack>,
   ) {}
 
   private async findOwnedFlight(userId: string, id: string) {
@@ -165,6 +163,12 @@ export class FlightService {
       samplesText: payload.samplesText,
     });
     return this.flightTrackRepo.save(entity);
+  }
+
+  async getTrackBySource(userId: string, flightId: string, source: TrackSource) {
+    const flight = await this.findOwnedFlight(userId, flightId);
+    if (!flight) return null;
+    return this.flightTrackRepo.findOne({ where: { flightId, source } });
   }
 
   async getSamplesText(userId: string, flightId: string, source: TrackSource) {

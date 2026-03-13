@@ -7,6 +7,7 @@ import { PatchFlightCommentDto, PatchFlightDescriptionDto, UpsertFlightDto } fro
 import { UpsertFlightTrackDto } from './dto/track.dto';
 import type { Request } from 'express';
 import type { TrackSource } from './schemas/flightTrack.schema';
+import { createHash } from 'crypto';
 
 const METERS_TO_FEET = 3.280839895013123;
 const ALT_FT_MIN_VALID = -5_000;
@@ -40,6 +41,10 @@ function sanitizeTrack(t: any) {
   if (!t) return t;
   const { rawText: _rawText, samplesText: _samplesText, ...rest } = t;
   return rest;
+}
+
+function sha256Hex(buf: Buffer) {
+  return createHash('sha256').update(buf).digest('hex');
 }
 
 @Controller('flight')
@@ -154,18 +159,25 @@ export class FlightController {
     const mime = file.mimetype ?? null;
 
     const text = file.buffer.toString('utf8');
+
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException();
+
+    const rawSha256 = sha256Hex(file.buffer);
+    const existing = await this.flightService.getTrackBySource(userId, flightId, src);
+    if (existing?.meta?.rawSha256 === rawSha256) {
+      return { ...sanitizeTrack(existing), source: 'FORE_FLIGHT' as const };
+    }
+
     // For now, support ForeFlight KML gx:Track uploads. (GPX upload can be added later.)
     const parsed = parseForeFlightKml(text);
     parsed.feature.properties = {
       ...(parsed.feature.properties ?? {}),
       id: flightId,
     };
-
-    const userId = req.user?.id;
-    if (!userId) throw new UnauthorizedException();
     const saved = await this.flightService.upsertTrackWithRaw(userId, flightId, src, {
       feature: parsed.feature,
-      meta: { ...(parsed.meta ?? {}), originalFilename: filename },
+      meta: { ...(parsed.meta ?? {}), originalFilename: filename, rawSha256 },
       rawText: text,
       rawFormat: 'kml',
       rawFilename: filename,
