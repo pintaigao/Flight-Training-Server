@@ -44,6 +44,13 @@ export class TrackScheduleController {
     return this.trackScheduleService.cancel(this.requireUserId(req), scheduleId);
   }
 
+  @Post(':id/archive')
+  archive(@Req() req: Request, @Param('id') id: string) {
+    const scheduleId = String(id ?? '').trim();
+    if (!scheduleId) throw new BadRequestException('id is required');
+    return this.trackScheduleService.archive(this.requireUserId(req), scheduleId);
+  }
+
   @Get(':id/executions')
   listExecutions(@Req() req: Request, @Param('id') id: string) {
     const scheduleId = String(id ?? '').trim();

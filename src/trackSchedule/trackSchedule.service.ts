@@ -39,6 +39,13 @@ export class TrackScheduleService {
     });
   }
 
+  async archive(userId: string, id: string) {
+    return this.request(`/adsb/flights/track-schedules/${encodeURIComponent(id)}/archive`, {
+      method: 'POST',
+      userId,
+    });
+  }
+
   async listExecutions(userId: string, id: string) {
     return this.request(`/adsb/flights/track-schedules/${encodeURIComponent(id)}/executions`, {
       method: 'GET',
