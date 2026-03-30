@@ -6,6 +6,7 @@ import { FlightModule } from './flight/flight.module';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { GraphqlBffModule } from './graphql/graphql.module';
+import { LiveAircraftModule } from './liveAircraft/liveAircraft.module';
 import { NoteModule } from './note/note.module';
 
 @Module({
@@ -24,6 +25,7 @@ import { NoteModule } from './note/note.module';
     FlightModule,
     UserModule,
     NoteModule,
+    LiveAircraftModule,
     GraphqlBffModule.forRoot(),
   ],
   controllers: [AppController],
