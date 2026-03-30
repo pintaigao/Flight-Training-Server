@@ -5,8 +5,12 @@ import { Flight } from './schemas/flight.schema';
 import { FlightTrack, type TrackSource } from './schemas/flightTrack.schema';
 import type { UpsertFlightDto } from './dto/flight.dto';
 import type { UpsertFlightTrackDto } from './dto/track.dto';
+import { parseForeFlightKml } from './foreflightKml';
+import type { ImportScheduledTrackDto } from './dto/importScheduledTrack.dto';
 
 const METERS_TO_FEET = 3.280839895013123;
+const CHICAGO_TZ = 'America/Chicago';
+const PENDING_EDIT_TAG = 'PENDING_EDIT';
 
 function normalizeKmlMeta(meta: any | null) {
   if (!meta) return meta;
@@ -39,6 +43,42 @@ function normalizeKmlMeta(meta: any | null) {
       altMaxFt: conv(stats.altMaxFt),
     },
   };
+}
+
+function dateISOInChicago(iso: string) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: CHICAGO_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(iso));
+}
+
+function minutesBetween(aISO: string, bISO: string) {
+  const a = new Date(aISO).getTime();
+  const b = new Date(bISO).getTime();
+  return Math.max(0, Math.round((b - a) / 60000));
+}
+
+function normalizeValue(value: string | null | undefined) {
+  return String(value ?? '').trim().toUpperCase();
+}
+
+function buildPendingDescription(dto: ImportScheduledTrackDto) {
+  const targetType = normalizeValue(dto.targetType).toLowerCase();
+  const targetValue = normalizeValue(dto.targetValue);
+  const displayName = String(dto.displayName ?? '').trim();
+  const parts = ['Auto-imported from ADS-B track schedule'];
+
+  if (displayName) {
+    parts.push(`"${displayName}"`);
+  }
+
+  if (targetValue) {
+    parts.push(`(${targetType || 'target'}: ${targetValue})`);
+  }
+
+  return parts.join(' ');
 }
 
 @Injectable()
@@ -81,7 +121,7 @@ export class FlightService {
       return {
         ...f,
         track: best?.feature ?? null,
-        trackSource: best ? 'FORE_FLIGHT' : null,
+        trackSource: best?.source ?? null,
         trackMeta: meta ?? null,
       };
     });
@@ -163,6 +203,70 @@ export class FlightService {
       samplesText: payload.samplesText,
     });
     return this.flightTrackRepo.save(entity);
+  }
+
+  async importScheduledTrack(dto: ImportScheduledTrackDto) {
+    const parsed = parseForeFlightKml(dto.rawKml);
+    const flightId = `adsb-${dto.scheduleId}-${dto.executionId}`;
+    const dateISO = dateISOInChicago(parsed.startTimeISO);
+    const aircraftTail =
+      normalizeValue(dto.targetType).toLowerCase() === 'tail'
+        ? normalizeValue(dto.targetValue) || 'UNKNOWN'
+        : 'UNKNOWN';
+
+    const flight = await this.upsertFlight(dto.userId, flightId, {
+      dateISO,
+      startTimeISO: parsed.startTimeISO,
+      endTimeISO: parsed.endTimeISO,
+      aircraftTail,
+      from: 'TBD',
+      to: 'TBD',
+      durationMin: minutesBetween(parsed.startTimeISO, parsed.endTimeISO),
+      description: buildPendingDescription(dto),
+      tags: [PENDING_EDIT_TAG],
+      comments: '',
+    });
+
+    if (!flight) {
+      throw new Error('Failed to upsert flight for ADS-B schedule import');
+    }
+
+    const feature = {
+      ...parsed.feature,
+      properties: {
+        ...(parsed.feature.properties ?? {}),
+        id: flight.id,
+      },
+    };
+
+    const track = await this.upsertTrackWithRaw(
+      dto.userId,
+      flight.id,
+      'ADSB_TRACK',
+      {
+        feature,
+        meta: {
+          ...(parsed.meta ?? {}),
+          importKind: 'TRACK_SCHEDULE',
+          scheduleId: dto.scheduleId,
+          executionId: dto.executionId,
+          displayName: dto.displayName,
+          targetType: dto.targetType,
+          targetValue: dto.targetValue,
+        },
+        rawText: dto.rawKml,
+        rawFormat: 'kml',
+        rawFilename: dto.rawFilename ?? `track-schedule-${dto.executionId}.kml`,
+        rawMime: 'application/vnd.google-earth.kml+xml',
+        samplesText: JSON.stringify(parsed.samples),
+      },
+    );
+
+    if (!track) {
+      throw new Error('Failed to upsert ADS-B track for imported flight');
+    }
+
+    return { flight, track };
   }
 
   async getTrackBySource(userId: string, flightId: string, source: TrackSource) {

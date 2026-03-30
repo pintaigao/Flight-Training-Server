@@ -126,7 +126,7 @@ export class FlightController {
     if (!userId) throw new UnauthorizedException();
     const res = await this.flightService.getTrack(userId, flightId, preferred);
     if (!res) throw new NotFoundException('No track found');
-    return { ...sanitizeTrack(res), source: 'FORE_FLIGHT' as const };
+    return { ...sanitizeTrack(res), source: res.source };
   }
 
   @Delete(':id')
@@ -166,7 +166,7 @@ export class FlightController {
     const rawSha256 = sha256Hex(file.buffer);
     const existing = await this.flightService.getTrackBySource(userId, flightId, src);
     if (existing?.meta?.rawSha256 === rawSha256) {
-      return { ...sanitizeTrack(existing), source: 'FORE_FLIGHT' as const };
+      return { ...sanitizeTrack(existing), source: existing.source };
     }
 
     // For now, support ForeFlight KML gx:Track uploads. (GPX upload can be added later.)

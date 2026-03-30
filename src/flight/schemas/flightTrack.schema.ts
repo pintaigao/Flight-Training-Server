@@ -1,6 +1,6 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
-export type TrackSource = 'FORE_FLIGHT';
+export type TrackSource = 'FORE_FLIGHT' | 'ADSB_TRACK';
 
 @Entity({ name: 'flight_tracks' })
 @Index(['flightId', 'source'], { unique: true })
