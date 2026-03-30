@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { GraphqlBffModule } from './graphql/graphql.module';
 import { LiveAircraftModule } from './liveAircraft/liveAircraft.module';
 import { NoteModule } from './note/note.module';
+import { TrackScheduleModule } from './trackSchedule/trackSchedule.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { NoteModule } from './note/note.module';
     }),
     AuthModule,
     FlightModule,
+    TrackScheduleModule,
     UserModule,
     NoteModule,
     LiveAircraftModule,
