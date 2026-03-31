@@ -19,6 +19,7 @@ export class GraphqlBffModule {
         GraphQLModule.forRoot<ApolloDriverConfig>({
           driver: ApolloDriver,
           path: '/graphql',
+          useGlobalPrefix: true,
           playground: process.env.NODE_ENV !== 'production',
           autoSchemaFile: join(tmpdir(), 'flight-training-server.schema.gql'),
           context: ({ req, res }: { req: Request; res: Response }) => ({ req, res }),

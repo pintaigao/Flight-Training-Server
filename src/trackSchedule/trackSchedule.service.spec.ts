@@ -17,7 +17,7 @@ describe('TrackScheduleService archive', () => {
       await service.archive('u1', '42');
 
       expect(fetchMock).toHaveBeenCalledWith(
-        'http://localhost:5053/adsb/flights/track-schedules/42/archive',
+        'http://localhost:5053/api/v1/adsb/flights/track-schedules/42/archive',
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({

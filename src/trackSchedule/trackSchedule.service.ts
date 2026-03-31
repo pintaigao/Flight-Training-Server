@@ -11,7 +11,7 @@ export class TrackScheduleService {
     process.env.ADSB_TRACKER_SERVICE_TOKEN ?? '';
 
   async create(userId: string, dto: CreateTrackScheduleDto) {
-    return this.request('/adsb/flights/track-schedules', {
+    return this.request('/api/v1/adsb/flights/track-schedules', {
       method: 'POST',
       userId,
       body: dto,
@@ -19,35 +19,35 @@ export class TrackScheduleService {
   }
 
   async list(userId: string) {
-    return this.request('/adsb/flights/track-schedules', {
+    return this.request('/api/v1/adsb/flights/track-schedules', {
       method: 'GET',
       userId,
     });
   }
 
   async getById(userId: string, id: string) {
-    return this.request(`/adsb/flights/track-schedules/${encodeURIComponent(id)}`, {
+    return this.request(`/api/v1/adsb/flights/track-schedules/${encodeURIComponent(id)}`, {
       method: 'GET',
       userId,
     });
   }
 
   async cancel(userId: string, id: string) {
-    return this.request(`/adsb/flights/track-schedules/${encodeURIComponent(id)}/cancel`, {
+    return this.request(`/api/v1/adsb/flights/track-schedules/${encodeURIComponent(id)}/cancel`, {
       method: 'POST',
       userId,
     });
   }
 
   async archive(userId: string, id: string) {
-    return this.request(`/adsb/flights/track-schedules/${encodeURIComponent(id)}/archive`, {
+    return this.request(`/api/v1/adsb/flights/track-schedules/${encodeURIComponent(id)}/archive`, {
       method: 'POST',
       userId,
     });
   }
 
   async listExecutions(userId: string, id: string) {
-    return this.request(`/adsb/flights/track-schedules/${encodeURIComponent(id)}/executions`, {
+    return this.request(`/api/v1/adsb/flights/track-schedules/${encodeURIComponent(id)}/executions`, {
       method: 'GET',
       userId,
     });
@@ -55,7 +55,7 @@ export class TrackScheduleService {
 
   async downloadExecution(userId: string, executionId: string) {
     const response = await fetch(
-      `${this.baseUrl}/adsb/flights/track-schedules/executions/${encodeURIComponent(executionId)}/download`,
+      `${this.baseUrl}/api/v1/adsb/flights/track-schedules/executions/${encodeURIComponent(executionId)}/download`,
       {
         method: 'GET',
         headers: this.headers(userId),
