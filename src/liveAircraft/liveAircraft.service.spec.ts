@@ -31,7 +31,7 @@ describe('LiveAircraftService', () => {
     const service = new LiveAircraftService();
     await expect(service.getSnapshot()).resolves.toEqual(payload);
     expect(global.fetch).toHaveBeenCalledWith(
-      'http://tracker.test:5053/api/v1/adsb/flights/live-aircraft',
+      'http://tracker.test:5053/adsb/flights/live-aircraft',
       { method: 'GET' },
     );
   });

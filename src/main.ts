@@ -8,7 +8,6 @@ import session from 'express-session';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.setGlobalPrefix('api/v1');
   // 限制 Content-Type: application/json 的 body 最大 25MB
   app.use(json({ limit: '25mb' }));
   // 限制 Content-Type: application/x-www-form-urlencoded 的 body 最大 25MB（传统表单提交那种）

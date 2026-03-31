@@ -7,7 +7,7 @@ export class LiveAircraftService {
 
   async getSnapshot() {
     const response = await fetch(
-      `${this.baseUrl}/api/v1/adsb/flights/live-aircraft`,
+      `${this.baseUrl}/adsb/flights/live-aircraft`,
       { method: 'GET' },
     );
 
