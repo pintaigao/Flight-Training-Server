@@ -25,7 +25,7 @@ export class AuthController {
       sameSite: 'lax' as const,
       secure: process.env.NODE_ENV === 'production',
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-      // Frontend calls the API under `/api/v1/*` (Vite proxy rewrites to backend),
+      // Frontend calls the API under `/api/v1/*` directly,
       // so the cookie path must include that prefix to be sent on refresh requests.
       path: '/api/v1',
     };
