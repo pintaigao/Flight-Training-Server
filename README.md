@@ -32,7 +32,27 @@ $ npm install
 ```
 
 ## Environment
-None.
+
+This service supports separate local and production env files.
+
+- Local development: `.env.local`
+- Production: `.env.production`
+- Templates: `.env.local.example`, `.env.production.example`, `.env.example`
+
+The runtime chooses env files like this:
+
+- `NODE_ENV=production` -> `.env.production`
+- otherwise -> `.env.local`
+- if `DOTENV_CONFIG_PATH` is set, it wins over both defaults
+
+Database settings are read from environment variables:
+
+- `DB_HOST`
+- `DB_PORT`
+- `DB_USER`
+- `DB_PASSWORD`
+- `DB_NAME`
+- `DB_SYNCHRONIZE`
 
 ## Compile and run the project
 
@@ -46,6 +66,8 @@ $ npm run start:dev
 # production mode
 $ npm run start:prod
 ```
+
+For production Docker Compose deployments, prefer using `.env.production` as the source of the container environment.
 
 ## Run tests
 

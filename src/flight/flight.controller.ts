@@ -33,6 +33,7 @@ function normalizeKmlSamples(samples: any[], meta: any | null) {
   // Defensive cleanup: strip sentinel/outlier altitudes so charts don't explode.
   return converted.map((s) => {
     const alt = sanitizeAltFt(s?.altAglFt);
+
     return alt === null ? { ...s, altAglFt: null } : s;
   });
 }
@@ -75,10 +76,8 @@ export class FlightController {
   async patchDescription(@Param('id') id: string, @Body() dto: PatchFlightDescriptionDto, @Req() req: Request) {
     const flightId = String(id ?? '').trim();
     if (!flightId) throw new BadRequestException('id is required');
-    if (!dto || typeof dto.description !== 'string')
-      throw new BadRequestException('description is required');
-    if (dto.description.length > 280)
-      throw new BadRequestException('description is too long (max 280)');
+    if (!dto || typeof dto.description !== 'string') throw new BadRequestException('description is required');
+    if (dto.description.length > 280) throw new BadRequestException('description is too long (max 280)');
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException();
     const res = await this.flightService.patchDescription(userId, flightId, dto.description);
@@ -90,8 +89,7 @@ export class FlightController {
   async patchComment(@Param('id') id: string, @Body() dto: PatchFlightCommentDto, @Req() req: Request) {
     const flightId = String(id ?? '').trim();
     if (!flightId) throw new BadRequestException('id is required');
-    if (!dto || typeof dto.comment !== 'string')
-      throw new BadRequestException('comment is required');
+    if (!dto || typeof dto.comment !== 'string') throw new BadRequestException('comment is required');
     const userId = req.user?.id;
     if (!userId) throw new UnauthorizedException();
     const res = await this.flightService.patchComment(userId, flightId, dto.comment);

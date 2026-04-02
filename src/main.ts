@@ -1,12 +1,13 @@
-import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { json, urlencoded } from 'express';
 import { RedisStore } from 'connect-redis';
 import { createClient } from 'redis';
 import { AppModule } from './app.module';
 import session from 'express-session';
+import { loadEnv } from './config/runtime';
 
 async function bootstrap() {
+  loadEnv();
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api/v1');
   // 限制 Content-Type: application/json 的 body 最大 25MB
