@@ -22,20 +22,12 @@ export class UserController {
     const newPassword = body?.newPassword;
     const confirmNewPassword = body?.confirmNewPassword;
 
-    if (!nonEmpty(oldPassword))
-      throw new BadRequestException('oldPassword is required');
-    if (!nonEmpty(newPassword))
-      throw new BadRequestException('newPassword is required');
-    if (!nonEmpty(confirmNewPassword))
-      throw new BadRequestException('confirmNewPassword is required');
-    if (newPassword !== confirmNewPassword)
-      throw new BadRequestException('passwords do not match');
+    if (!nonEmpty(oldPassword)) throw new BadRequestException('oldPassword is required');
+    if (!nonEmpty(newPassword)) throw new BadRequestException('newPassword is required');
+    if (!nonEmpty(confirmNewPassword)) throw new BadRequestException('confirmNewPassword is required');
+    if (newPassword !== confirmNewPassword) throw new BadRequestException('passwords do not match');
 
-    const ok = await this.userService.changePassword(
-      userId,
-      oldPassword,
-      newPassword,
-    );
+    const ok = await this.userService.changePassword(userId, oldPassword, newPassword);
     if (!ok) throw new BadRequestException('oldPassword is incorrect');
     return { ok: true };
   }

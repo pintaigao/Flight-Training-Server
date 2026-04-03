@@ -44,12 +44,11 @@ export class AuthController {
   }
 
   @Post('register')
-  async register(
-    @Body() body: { email: string; password: string },
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    const user = await this.userService.create(body.email, body.password);
+  async register(@Body() body: { email: string; password: string; inviteCode: string }, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const user = await this.userService.create(body.email, body.password, body.inviteCode);
+    
+    if (!user) return new UnauthorizedException("Void Invitation");
+
     if (this.mode() === 'jwt') {
       const accessToken = signAccessToken({ sub: String(user.id), email: user.email });
       const refreshToken = signRefreshToken({ sub: String(user.id), email: user.email });
@@ -61,11 +60,7 @@ export class AuthController {
   }
 
   @Post('login')
-  async login(
-    @Body() body: { email: string; password: string },
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ) {
+  async login(@Body() body: { email: string; password: string }, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const user = await this.authService.validateUser(body.email, body.password);
     if (!user) throw new UnauthorizedException('Invalid credentials');
     if (this.mode() === 'jwt') {
@@ -86,9 +81,10 @@ export class AuthController {
     }
     try {
       req.session.destroy(() => {});
-    } catch {
+    } catch (err) {
       // ignore
     }
+    
     res.clearCookie('connect.sid');
     res.clearCookie(this.refreshCookieName(), this.refreshCookieOptions());
     return { ok: true };

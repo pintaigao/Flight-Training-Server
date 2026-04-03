@@ -19,9 +19,11 @@ export class UserService {
     return this.userRepo.findOne({ where: { email } });
   }
 
-  async create(email: string, password: string) {
+  async create(email: string, password: string, inviteCode: string) {
+    if (!inviteCode || inviteCode !== 'qwerty123') return null;
+    
     const hashed = await bcrypt.hash(password, 10);
-    const user = this.userRepo.create({ email, password: hashed });
+    const user = this.userRepo.create({ email, password: hashed, inviteCode });
     return this.userRepo.save(user);
   }
 
