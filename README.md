@@ -54,6 +54,24 @@ Database settings are read from environment variables:
 - `DB_NAME`
 - `DB_SYNCHRONIZE`
 
+## Auth
+
+This service supports two auth modes:
+
+- `AUTH_MODE=session`: server-side session stored in Redis (`connect.sid` cookie)
+- `AUTH_MODE=jwt`: short-lived access token + refresh token cookie (`/api/v1/auth/refresh`)
+
+## Google login
+
+Add these env vars (typically in `.env.local` / `.env.production`):
+
+- `GOOGLE_CLIENT_ID` (required): Google OAuth Web Client ID (must match `VITE_GOOGLE_CLIENT_ID` in the frontend)
+- `GOOGLE_AUTO_CREATE_USER` (optional, default `false`): when `true`, a first-time Google login can auto-create a local user row
+
+Endpoint:
+
+- `POST /api/v1/auth/google` with JSON body `{ "credential": "<google_id_token>" }`
+
 ## Compile and run the project
 
 ```bash

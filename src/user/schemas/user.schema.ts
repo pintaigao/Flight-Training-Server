@@ -10,7 +10,10 @@ export class User {
 
   @Column()
   password: string;
-  
+
   @Column()
   inviteCode: string;
+
+  @Column({ default: 'LOCAL' })
+  registerSource: 'LOCAL' | 'GOOGLE_OAUTH';
 }

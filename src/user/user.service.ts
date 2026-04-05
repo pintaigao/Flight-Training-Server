@@ -3,6 +3,7 @@ import { Repository } from 'typeorm';
 import { User } from './schemas/user.schema';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class UserService {
@@ -23,7 +24,12 @@ export class UserService {
     if (!inviteCode || inviteCode !== 'qwerty123') return null;
     
     const hashed = await bcrypt.hash(password, 10);
-    const user = this.userRepo.create({ email, password: hashed, inviteCode });
+    const user = this.userRepo.create({
+      email: email.trim().toLowerCase(),
+      password: hashed,
+      inviteCode,
+      registerSource: 'LOCAL',
+    });
     return this.userRepo.save(user);
   }
 
@@ -46,5 +52,18 @@ export class UserService {
     user.password = hashed;
     await this.userRepo.save(user);
     return true;
+  }
+
+  async createOauthUser(email: string, inviteCode = 'google') {
+    const normalizedEmail = email.trim().toLowerCase();
+    const secret = randomBytes(32).toString('hex');
+    const hashed = await bcrypt.hash(secret, 10);
+    const user = this.userRepo.create({
+      email: normalizedEmail,
+      password: hashed,
+      inviteCode,
+      registerSource: 'GOOGLE_OAUTH',
+    });
+    return this.userRepo.save(user);
   }
 }

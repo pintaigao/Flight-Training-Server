@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Req, Res, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Body, Get, Req, Res, UnauthorizedException, InternalServerErrorException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UserService } from '../user/user.service';
 import type { Request, Response } from 'express';
@@ -46,8 +46,8 @@ export class AuthController {
   @Post('register')
   async register(@Body() body: { email: string; password: string; inviteCode: string }, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const user = await this.userService.create(body.email, body.password, body.inviteCode);
-    
-    if (!user) return new UnauthorizedException("Void Invitation");
+
+    if (!user) return new UnauthorizedException('Void Invitation');
 
     if (this.mode() === 'jwt') {
       const accessToken = signAccessToken({ sub: String(user.id), email: user.email });
@@ -73,6 +73,56 @@ export class AuthController {
     return { id: String(user.id), email: user.email };
   }
 
+  @Post('google')
+  async googleLogin(@Body() body: { credential: string }, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const expectedAudience = process.env.GOOGLE_CLIENT_ID?.trim();
+    if (!expectedAudience) {
+      throw new InternalServerErrorException('Missing GOOGLE_CLIENT_ID');
+    }
+
+    const credential = body?.credential?.trim();
+    if (!credential) throw new UnauthorizedException('Missing Google credential');
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    let info: any | null = null;
+    try {
+      const url = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`;
+      const tokenRes = await fetch(url, { signal: ctrl.signal });
+      if (!tokenRes.ok) throw new UnauthorizedException('Invalid Google token');
+      info = (await tokenRes.json());
+    } catch (err) {
+      if (err instanceof UnauthorizedException) throw err;
+      throw new UnauthorizedException('Invalid Google token');
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (!info || typeof info !== 'object') throw new UnauthorizedException('Invalid Google token');
+    if (info.aud !== expectedAudience) throw new UnauthorizedException('Invalid Google token audience');
+
+    const email = typeof info.email === 'string' ? info.email.trim().toLowerCase() : '';
+    const emailVerified = info.email_verified === true || String(info.email_verified).toLowerCase() === 'true';
+    if (!email || !emailVerified) throw new UnauthorizedException('Google email not verified');
+
+    let user = await this.userService.findByEmail(email);
+    if (!user) {
+      const autoCreate = (process.env.GOOGLE_AUTO_CREATE_USER ?? 'false').trim().toLowerCase() === 'true';
+      if (!autoCreate) throw new UnauthorizedException('No local account for this email');
+      user = await this.userService.createOauthUser(email, 'google');
+    }
+
+    if (this.mode() === 'jwt') {
+      const accessToken = signAccessToken({ sub: String(user.id), email: user.email });
+      const refreshToken = signRefreshToken({ sub: String(user.id), email: user.email });
+      res.cookie(this.refreshCookieName(), refreshToken, this.refreshCookieOptions());
+      return { id: String(user.id), email: user.email, accessToken };
+    }
+
+    req.session.userId = user.id;
+    return { id: String(user.id), email: user.email };
+  }
+
   @Post('logout')
   logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     if (this.mode() === 'jwt') {
@@ -84,7 +134,7 @@ export class AuthController {
     } catch (err) {
       // ignore
     }
-    
+
     res.clearCookie('connect.sid');
     res.clearCookie(this.refreshCookieName(), this.refreshCookieOptions());
     return { ok: true };
