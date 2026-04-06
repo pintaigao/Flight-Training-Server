@@ -61,6 +61,19 @@ This service supports two auth modes:
 - `AUTH_MODE=session`: server-side session stored in Redis (`connect.sid` cookie)
 - `AUTH_MODE=jwt`: short-lived access token + refresh token cookie (`/api/v1/auth/refresh`)
 
+## Auth routes for BFF
+
+When `Flight-Training-BFF` is used as the browser-facing entrypoint, it should call the auth routes on this service directly:
+
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/refresh`
+- `GET /api/v1/auth/profile`
+- `POST /api/v1/auth/google`
+- `POST /api/v1/auth/logout`
+
+These routes accept `X-Service-Token` when `BFF_SERVICE_TOKEN` is configured. They return token pairs in the response body so the BFF can own browser-side session and cookie semantics.
+
 ## Google login
 
 Add these env vars (typically in `.env.local` / `.env.production`):

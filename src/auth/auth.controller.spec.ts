@@ -3,16 +3,14 @@ import { UnauthorizedException } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { UserService } from '../user/user.service';
-import { signRefreshToken } from '../utils/jwt';
 
-describe('AuthController (jwt refresh)', () => {
+describe('AuthController service contract', () => {
   let controller: AuthController;
   let userService: jest.Mocked<UserService>;
+  let authService: jest.Mocked<AuthService>;
 
   beforeEach(async () => {
-    process.env.AUTH_MODE = 'jwt';
-    process.env.JWT_SECRET = 'test-jwt-secret';
-    delete process.env.JWT_REFRESH_SECRET;
+    process.env.BFF_SERVICE_TOKEN = 'bff-secret';
 
     userService = {
       create: jest.fn(),
@@ -22,8 +20,13 @@ describe('AuthController (jwt refresh)', () => {
       changePassword: jest.fn(),
     } as any;
 
-    const authService = {
+    authService = {
       validateUser: jest.fn(),
+      issueTokens: jest.fn(),
+      refreshTokens: jest.fn(),
+      readProfile: jest.fn(),
+      registerUser: jest.fn(),
+      loginWithGoogleCredential: jest.fn(),
     } as any as jest.Mocked<AuthService>;
 
     const moduleRef = await Test.createTestingModule({
@@ -37,23 +40,31 @@ describe('AuthController (jwt refresh)', () => {
     controller = moduleRef.get(AuthController);
   });
 
-  it('throws Unauthorized when refresh cookie is missing', async () => {
-    const req: any = { headers: {} };
-    const res: any = { setHeader: jest.fn(), cookie: jest.fn() };
-    await expect(controller.refresh(req, res)).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+  it('rejects login without matching service token', async () => {
+    authService.validateUser.mockResolvedValue({ id: 'u1', email: 'a@b.com' } as any);
+
+    const req: any = { header: jest.fn().mockReturnValue('') };
+    const res: any = { cookie: jest.fn(), clearCookie: jest.fn(), setHeader: jest.fn() };
+
+    await expect(
+      controller.login({ email: 'a@b.com', password: 'pw' }, req, res),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
-  it('returns new accessToken when refresh cookie is valid', async () => {
-    userService.findById.mockResolvedValue({ id: 'u1', email: 'a@b.com' } as any);
-    const rt = signRefreshToken({ sub: 'u1', email: 'a@b.com' });
-    const req: any = { headers: { cookie: `refreshToken=${encodeURIComponent(rt)}` } };
-    const res: any = { setHeader: jest.fn(), cookie: jest.fn() };
+  it('returns token pair from auth service login without browser cookie handling', async () => {
+    authService.validateUser.mockResolvedValue({ id: 'u1', email: 'a@b.com' } as any);
+    authService.issueTokens.mockReturnValue({ accessToken: 'access-1', refreshToken: 'refresh-1' });
 
-    const out = await controller.refresh(req, res);
-    expect(typeof (out as any).accessToken).toBe('string');
-    expect(res.cookie).toHaveBeenCalledTimes(1);
+    const req: any = { header: jest.fn().mockReturnValue('bff-secret') };
+    const res: any = { cookie: jest.fn(), clearCookie: jest.fn(), setHeader: jest.fn() };
+    const out = await controller.login({ email: 'a@b.com', password: 'pw' }, req, res);
+
+    expect(out).toEqual({
+      id: 'u1',
+      email: 'a@b.com',
+      accessToken: 'access-1',
+      refreshToken: 'refresh-1',
+    });
+    expect(res.cookie).not.toHaveBeenCalled();
   });
 });
-

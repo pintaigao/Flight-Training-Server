@@ -7,6 +7,7 @@ import { ImportScheduledTrackDto } from './dto/importScheduledTrack.dto';
 export class InternalFlightImportController {
   constructor(private readonly flightService: FlightService) {}
 
+  // 从 ADSB Server 导入 KML（当 Schedule Monitor 结束的时候）（通常是 ADSB 检测到 Schedule 结束后生成 KML 并 call 这个 api 传回 KML）
   @Post('track-schedule-import')
   importScheduledTrack(@Req() req: Request, @Body() dto: ImportScheduledTrackDto) {
     this.requireServiceToken(req);

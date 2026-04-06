@@ -2,14 +2,10 @@ import { HttpException, Injectable, InternalServerErrorException } from '@nestjs
 
 @Injectable()
 export class LiveAircraftService {
-  private readonly baseUrl =
-    process.env.ADSB_TRACKER_BASE_URL ?? 'http://localhost:5053';
+  private readonly baseUrl = process.env.ADSB_TRACKER_BASE_URL ?? 'http://localhost:5053';
 
   async getSnapshot() {
-    const response = await fetch(
-      `${this.baseUrl}/api/v1/adsb/flights/live-aircraft`,
-      { method: 'GET' },
-    );
+    const response = await fetch(`${this.baseUrl}/api/v1/adsb/flights/live-aircraft`, { method: 'GET' });
 
     if (!response.ok) {
       throw await this.toHttpException(response);
