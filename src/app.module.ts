@@ -5,7 +5,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { FlightModule } from './flight/flight.module';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
-import { GraphqlBffModule } from './graphql/graphql.module';
 import { LiveAircraftModule } from './liveAircraft/liveAircraft.module';
 import { NoteModule } from './note/note.module';
 import { TrackScheduleModule } from './trackSchedule/trackSchedule.module';
@@ -22,7 +21,6 @@ import { buildDatabaseConfig } from './config/runtime';
     UserModule,
     NoteModule,
     LiveAircraftModule,
-    GraphqlBffModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [AppService],
