@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { json, urlencoded } from 'express';
 import { RedisStore } from 'connect-redis';
 import { createClient } from 'redis';
@@ -8,7 +9,8 @@ import { loadEnv } from './config/runtime';
 
 async function bootstrap() {
   loadEnv();
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.set('trust proxy', 1);
   app.setGlobalPrefix('api/v1');
   // 限制 Content-Type: application/json 的 body 最大 25MB
   app.use(json({ limit: '25mb' }));
