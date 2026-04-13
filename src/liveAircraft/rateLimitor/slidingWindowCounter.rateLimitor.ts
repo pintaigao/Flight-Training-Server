@@ -1,4 +1,4 @@
-import type { RateLimitDecision, RateLimitor, RateLimitorConfig } from './types';
+import type { RateLimitDecision, RateLimitor, RateLimitorConfig, RateLimitorStateStore } from './types';
 
 // Per key:
 // currentCount = requests in current window
@@ -8,51 +8,46 @@ type SlidingCounterState = {
   windowStart: number;
   currentCount: number;
   previousCount: number;
-  lastSeenAt: number;
 };
 
 export class SlidingWindowCounterRateLimitor implements RateLimitor {
-  private readonly states = new Map<string, SlidingCounterState>();
-  private lastSweepAt = 0;
+  private readonly ttlMs: number;
 
-  constructor(private readonly config: RateLimitorConfig) {}
+  constructor(
+    private readonly config: RateLimitorConfig,
+    private readonly store: RateLimitorStateStore,
+  ) {
+    this.ttlMs = config.windowMs * 5;
+  }
 
-  allow(key: string, now: number): RateLimitDecision {
-    // Periodic cleanup.
-    this.sweepIfNeeded(now);
-
+  async allow(key: string, now: number): Promise<RateLimitDecision> {
+    const stateKey = `sliding_window_counter:${key}`;
     const currentWindowStart = this.currentWindowStart(now);
-    const state = this.states.get(key) ?? {
+    const state = (await this.store.getState<SlidingCounterState>(stateKey)) ?? {
       windowStart: currentWindowStart,
       currentCount: 0,
       previousCount: 0,
-      lastSeenAt: now,
     };
 
     // Move counter window forward when time crosses boundary.
     this.rollWindowIfNeeded(state, currentWindowStart);
-    state.lastSeenAt = now;
 
     // Estimate rolling-window usage:
     // current window count + weighted previous window count.
     const elapsedInWindow = now - state.windowStart;
-    const previousWeight =
-      (this.config.windowMs - elapsedInWindow) / this.config.windowMs;
+    const previousWeight = (this.config.windowMs - elapsedInWindow) / this.config.windowMs;
     const estimated = state.currentCount + state.previousCount * previousWeight;
 
     // Deny if estimated rolling usage is already over limit.
     if (estimated >= this.config.limit) {
-      const retryAfterMs = Math.max(
-        1,
-        state.windowStart + this.config.windowMs - now,
-      );
-      this.states.set(key, state);
+      const retryAfterMs = Math.max(1, state.windowStart + this.config.windowMs - now);
+      await this.store.setState(stateKey, state, this.ttlMs);
       return { allowed: false, retryAfterMs, remaining: 0 };
     }
 
     // Admit request in current window.
     state.currentCount += 1;
-    this.states.set(key, state);
+    await this.store.setState(stateKey, state, this.ttlMs);
     return {
       allowed: true,
       retryAfterMs: 0,
@@ -65,14 +60,10 @@ export class SlidingWindowCounterRateLimitor implements RateLimitor {
     return Math.floor(now / this.config.windowMs) * this.config.windowMs;
   }
 
-  private rollWindowIfNeeded(
-    state: SlidingCounterState,
-    currentWindowStart: number,
-  ) {
+  private rollWindowIfNeeded(state: SlidingCounterState, currentWindowStart: number) {
     // Same window: no state rotation needed.
     if (currentWindowStart === state.windowStart) return;
-    const windowsPassed =
-      (currentWindowStart - state.windowStart) / this.config.windowMs;
+    const windowsPassed = (currentWindowStart - state.windowStart) / this.config.windowMs;
 
     // Adjacent window keeps previous count; skipped windows reset previous.
     if (windowsPassed === 1) {
@@ -83,17 +74,5 @@ export class SlidingWindowCounterRateLimitor implements RateLimitor {
 
     state.currentCount = 0;
     state.windowStart = currentWindowStart;
-  }
-
-  private sweepIfNeeded(now: number) {
-    // Sweep at most once per window.
-    if (now - this.lastSweepAt < this.config.windowMs) return;
-    this.lastSweepAt = now;
-
-    // Drop inactive keys.
-    const cutoff = now - this.config.windowMs * 5;
-    for (const [key, state] of this.states.entries()) {
-      if (state.lastSeenAt < cutoff) this.states.delete(key);
-    }
   }
 }

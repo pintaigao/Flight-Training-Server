@@ -6,6 +6,9 @@ export type RateLimitorAlgorithm =
   | 'sliding_window_log'
   | 'sliding_window_counter';
 
+// Where limiter state is stored.
+export type RateLimitorStateBackend = 'memory' | 'redis';
+
 // Shared limiter config:
 // limit = max requests in a window, windowMs = window size in milliseconds.
 export type RateLimitorConfig = {
@@ -23,7 +26,14 @@ export type RateLimitDecision = {
   remaining: number;
 };
 
+export interface RateLimitorStateStore {
+  // Read serialized state by key. Returns null when missing/expired.
+  getState<T>(key: string): Promise<T | null>;
+  // Persist state with TTL so cold keys are auto-cleaned.
+  setState<T>(key: string, value: T, ttlMs: number): Promise<void>;
+}
+
 export interface RateLimitor {
   // Evaluate one request for the given key at the given timestamp.
-  allow(key: string, now: number): RateLimitDecision;
+  allow(key: string, now: number): Promise<RateLimitDecision>;
 }
